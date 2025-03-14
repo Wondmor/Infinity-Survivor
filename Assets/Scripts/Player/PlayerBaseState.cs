@@ -2,32 +2,34 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 namespace TrianCatStudio
 {
     public abstract class PlayerBaseState : IState
     {
-        protected readonly StateMachine stateMachine;
-        protected PlayerStateManager stateManager;
+        // 公共属性
+        public int StateLayer { get; protected set; }
+        public virtual bool CanBeInterrupted => StateLayer < (int)StateLayerType.Action;
 
-        protected PlayerBaseState(StateMachine machine, InputManager input)
+        // 组件引用
+        protected readonly PlayerStateManager manager;
+
+        protected PlayerBaseState(PlayerStateManager manager)
         {
-            stateMachine = machine;
-            stateManager = PlayerStateManager.Instance;
+            this.manager = manager;
         }
 
-        public virtual void OnEnter() { }
-        public virtual void OnExit() { }
+        public virtual void OnEnter()
+        {
+        }
+
+        public virtual void OnExit()
+        {
+        }
 
         public virtual void Update(float deltaTime)
         {
-            HandleMovement(deltaTime);
-            HandleRotation(deltaTime);
-            CheckStateTransitions();
+
         }
-
-        protected abstract void HandleMovement(float deltaTime);
-        protected abstract void HandleRotation(float deltaTime);
-        protected abstract void CheckStateTransitions();
-
     }
 }

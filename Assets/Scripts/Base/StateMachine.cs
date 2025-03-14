@@ -139,13 +139,31 @@ namespace TrianCatStudio
         public IState CurrentState { get => currentState;}
         private Dictionary<IState, List<Transition>> transitions = new Dictionary<IState, List<Transition>>();
         private Dictionary<string, object> parameters = new Dictionary<string, object>();
-  
+        //保存已注册的状态
+        private HashSet<IState> allStates = new HashSet<IState>();
 
+        //增加跳转
         public void AddTransition(IState from, Transition transition)
         {
             if (!transitions.ContainsKey(from))
                 transitions[from] = new List<Transition>();
             transitions[from].Add(transition);
+            allStates.Add(from); // 注册状态到集合
+        }
+
+        // 全局跳转方法
+        public void AddGlobalTransition(IState to, params Condition[] conditions)
+        {
+            var transition = new Transition
+            {
+                TargetState = to,
+                Conditions = new List<Condition>(conditions)
+            };
+
+            foreach (var state in allStates)
+            {
+                AddTransition(state, transition);
+            }
         }
 
         public void SetCurrentState(IState state)

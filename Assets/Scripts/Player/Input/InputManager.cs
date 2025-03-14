@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 namespace TrianCatStudio
 {
     [RequireComponent(typeof(PlayerInput))]
-    public class InputManager : SingletonAutoMono<InputManager>
+    public class InputManager : MonoBehaviour
     {
         // 输入事件委托
         public event Action<bool> OnAimAction;
@@ -15,7 +15,7 @@ namespace TrianCatStudio
 
         // 当前输入状态
         public Vector2 MoveInput { get; private set; }
-        public bool IsSprinting { get; private set; }
+        public bool IsRunning { get; private set; }
         public bool IsCrouching { get; private set; }
         public bool JumpTriggered { get; private set; }
         public bool IsAiming { get; private set; }
@@ -33,8 +33,8 @@ namespace TrianCatStudio
             actionMap["Move"].performed += ctx => MoveInput = ctx.ReadValue<Vector2>();
             actionMap["Move"].canceled += _ => MoveInput = Vector2.zero;
 
-            actionMap["Sprint"].started += _ => IsSprinting = true;
-            actionMap["Sprint"].canceled += _ => IsSprinting = false;
+            actionMap["Run"].started += _ => IsRunning = true;
+            actionMap["Run"].canceled += _ => IsRunning = false;
 
             actionMap["Jump"].started += _ =>
             {
