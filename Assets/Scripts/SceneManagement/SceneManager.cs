@@ -32,7 +32,7 @@ namespace TrianCatStudio
             //    new Transition{ TargetState = new LoadingState(), Conditions = ... });
 
             // 设置初始状态
-            StateMachine.SetCurrentState(new MainMenuState());
+            StateMachine.ChangeState(new MainMenuState());
         }
 
         /// <summary>

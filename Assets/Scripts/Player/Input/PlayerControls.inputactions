@@ -67,6 +67,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Dash",
+                    "type": "Button",
+                    "id": "a8c2c9e7-b5d3-4f1e-8b1a-c3b5d7c9e8d6",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Crouch",
+                    "type": "Button",
+                    "id": "755dec0a-2043-4107-b3cc-ae1b5c616699",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -95,7 +113,7 @@
                 {
                     "name": "down",
                     "id": "6c94a5d1-2664-4a52-87c8-fea898b33e88",
-                    "path": "<Keyboard>/a",
+                    "path": "<Keyboard>/s",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -106,7 +124,7 @@
                 {
                     "name": "left",
                     "id": "283d4f2e-07a1-47ae-bbc0-19ff31d2fbd8",
-                    "path": "<Keyboard>/s",
+                    "path": "<Keyboard>/a",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -182,12 +200,23 @@
                 },
                 {
                     "name": "",
-                    "id": "171e665d-f168-4515-acdf-384e61b1dc42",
+                    "id": "e8c7a2f6-d5b1-4c3a-9e8d-7f6a2b9c8d5e",
                     "path": "<Keyboard>/e",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Melee",
+                    "action": "Dash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d323a5f6-90a3-482b-a35f-17454111057b",
+                    "path": "<Keyboard>/c",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Crouch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
