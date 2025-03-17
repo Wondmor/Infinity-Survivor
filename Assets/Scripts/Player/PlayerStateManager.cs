@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Unity;
 using UnityEngine;
 
@@ -9,26 +11,26 @@ namespace TrianCatStudio
         public StateMachine StateMachine { get; private set; }
         public Player Player { get; private set; }
 
-        // ×´Ì¬ÊµÀı
-        // »ù´¡²ã×´Ì¬
+        // çŠ¶æ€å®ä¾‹
+        // åŸºç¡€çŠ¶æ€
         public IdleState IdleState { get; private set; }
         public WalkState WalkState { get; private set; }
         public RunState RunState { get; private set; }
         
-        // ¶¯×÷²ã×´Ì¬
+        // åŠ¨ä½œå±‚çŠ¶æ€
         public JumpState JumpState { get; private set; }
         public DoubleJumpState DoubleJumpState { get; private set; }
-        public FallingState FallingState { get; private set; }
         public LandingState LandingState { get; private set; }
         public HardLandingState HardLandingState { get; private set; }
         public RollState RollState { get; private set; }
         public CrouchState CrouchState { get; private set; }
         public SlideState SlideState { get; private set; }
         
-        // ÉÏ°ëÉí²ã×´Ì¬
+        // ä¸ŠåŠèº«å±‚çŠ¶æ€
         public AimState AimState { get; private set; }
+        public FireState FireState { get; private set; }
 
-        // ÔËĞĞÊ±×´Ì¬
+        // è¿è¡Œæ—¶çŠ¶æ€
         private float moveInput;
         private bool isRunning;
         private bool isGrounded;
@@ -40,13 +42,13 @@ namespace TrianCatStudio
         {
             try
             {
-                Debug.Log("PlayerStateManager.Awake: ¿ªÊ¼³õÊ¼»¯");
+                Debug.Log("PlayerStateManager.Awake: å¼€å§‹åˆå§‹åŒ–");
                 Init(); 
-                Debug.Log("PlayerStateManager.Awake: ³õÊ¼»¯Íê³É");
+                Debug.Log("PlayerStateManager.Awake: åˆå§‹åŒ–å®Œæˆ");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"PlayerStateManager.Awake: ³õÊ¼»¯Ê§°Ü - {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"PlayerStateManager.Awake: åˆå§‹åŒ–å¤±è´¥ - {e.Message}\n{e.StackTrace}");
                 enabled = false;
             }
         }
@@ -55,76 +57,76 @@ namespace TrianCatStudio
         {
             try
             {
-                // È·±£×é¼şÔÚÆôÓÃÊ±ÕıÈ·³õÊ¼»¯
+                // ç¡®ä¿ç»„ä»¶å¯ç”¨æ—¶æ­£ç¡®åˆå§‹åŒ–
                 if (StateMachine == null)
                 {
-                    Debug.Log("PlayerStateManager.OnEnable: StateMachineÎª¿Õ£¬ÖØĞÂ³õÊ¼»¯");
+                    Debug.Log("PlayerStateManager.OnEnable: StateMachineä¸ºç©ºï¼Œé‡æ–°åˆå§‹åŒ–");
                     Init();
                 }
                 else
                 {
-                    Debug.Log("PlayerStateManager.OnEnable: StateMachineÒÑ´æÔÚ");
+                    Debug.Log("PlayerStateManager.OnEnable: StateMachineå·²å­˜åœ¨");
                 }
                 
-                // ´òÓ¡µ÷ÊÔĞÅÏ¢
-                Debug.Log("PlayerStateManagerÒÑÆôÓÃ");
+                // æ‰“å°è°ƒè¯•ä¿¡æ¯
+                Debug.Log("PlayerStateManagerå·²å¯ç”¨");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"PlayerStateManager.OnEnable: ·¢Éú´íÎó - {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"PlayerStateManager.OnEnable: å‘ç”Ÿé”™è¯¯ - {e.Message}\n{e.StackTrace}");
                 enabled = false;
             }
         }
         
         private void OnDisable()
         {
-            // ¼ÇÂ¼×é¼ş±»½ûÓÃµÄÔ­Òò
-            Debug.LogWarning("PlayerStateManager±»½ûÓÃ£¬Õâ¿ÉÄÜ»áµ¼ÖÂ½ÇÉ«ÎŞ·¨Õı³£ÒÆ¶¯ºÍ¶¯»­");
+            // è®°å½•ç»„ä»¶è¢«ç¦ç”¨çš„åŸå› 
+            Debug.LogWarning("PlayerStateManagerè¢«ç¦ç”¨ï¼Œè¿™å¯èƒ½ä¼šå¯¼è‡´è§’è‰²æ— æ³•æ­£å¸¸ç§»åŠ¨å’ŒåŠ¨ç”»");
         }
 
         protected void Init()
         {
             try
             {
-                Debug.Log("¿ªÊ¼³õÊ¼»¯PlayerStateManager");
+                Debug.Log("å¼€å§‹åˆå§‹åŒ–PlayerStateManager");
                 
                 StateMachine = new StateMachine();
                 if (StateMachine == null)
                 {
-                    Debug.LogError("StateMachine´´½¨Ê§°Ü");
+                    Debug.LogError("StateMachineåˆ›å»ºå¤±è´¥");
                     enabled = false;
                     return;
                 }
                 
                 Player = GetComponent<Player>();
                 
-                // È·±£Player×é¼ş´æÔÚ
+                // ç¡®ä¿Playerç»„ä»¶å­˜åœ¨
                 if (Player == null)
                 {
                     Player = GetComponent<Player>();
                     if (Player == null)
                     {
-                        Debug.LogError("PlayerStateManagerÎŞ·¨ÕÒµ½Player×é¼ş");
+                        Debug.LogError("PlayerStateManageræ— æ³•æ‰¾åˆ°Playerç»„ä»¶");
                         enabled = false;
                         return;
                     }
                 }
                 
-                Debug.Log("¿ªÊ¼³õÊ¼»¯×´Ì¬");
+                Debug.Log("å¼€å§‹åˆå§‹åŒ–çŠ¶æ€");
                 InitializeStates();
                 
-                Debug.Log("¿ªÊ¼×¢²á×´Ì¬×ª»»");
+                Debug.Log("å¼€å§‹æ³¨å†ŒçŠ¶æ€è½¬æ¢");
                 RegisterTransitions();
                 
-                Debug.Log("¿ªÊ¼ÉèÖÃ³õÊ¼×´Ì¬");
+                Debug.Log("å¼€å§‹è®¾ç½®åˆå§‹çŠ¶æ€");
                 SetInitialState();
                 
-                // ´òÓ¡µ÷ÊÔĞÅÏ¢
-                Debug.Log("PlayerStateManager³õÊ¼»¯Íê³É");
+                // æ‰“å°è°ƒè¯•ä¿¡æ¯
+                Debug.Log("PlayerStateManageråˆå§‹åŒ–å®Œæˆ");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"PlayerStateManager³õÊ¼»¯Ê§°Ü: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"PlayerStateManageråˆå§‹åŒ–å¤±è´¥: {e.Message}\n{e.StackTrace}");
                 enabled = false;
             }
         }
@@ -133,127 +135,143 @@ namespace TrianCatStudio
         {
             try
             {
-                // »ù´¡²ã×´Ì¬
+                // åŸºç¡€å±‚çŠ¶æ€
                 IdleState = new IdleState(this);
                 WalkState = new WalkState(this);
                 RunState = new RunState(this);
                 
-                // ¶¯×÷²ã×´Ì¬
+                // åŠ¨ä½œå±‚çŠ¶æ€
                 JumpState = new JumpState(this);
                 DoubleJumpState = new DoubleJumpState(this);
-                FallingState = new FallingState(this);
                 LandingState = new LandingState(this);
                 HardLandingState = new HardLandingState(this);
                 RollState = new RollState(this);
                 CrouchState = new CrouchState(this);
                 SlideState = new SlideState(this);
                 
-                // ÉÏ°ëÉí²ã×´Ì¬
+                // ä¸ŠåŠèº«å±‚çŠ¶æ€
                 AimState = new AimState(this);
+                FireState = new FireState(this);
                 
-                // ÑéÖ¤¹Ø¼ü×´Ì¬ÊÇ·ñ´´½¨³É¹¦
+                // éªŒè¯å…³é”®çŠ¶æ€æ˜¯å¦åˆ›å»ºæˆåŠŸ
                 if (IdleState == null)
                 {
-                    Debug.LogError("³õÊ¼»¯×´Ì¬Ê§°Ü: IdleStateÎª¿Õ");
+                    Debug.LogError("åˆå§‹åŒ–çŠ¶æ€å¤±è´¥: IdleStateä¸ºç©º");
                 }
                 
-                Debug.Log("ËùÓĞ×´Ì¬³õÊ¼»¯Íê³É");
+                Debug.Log("æ‰€æœ‰çŠ¶æ€åˆå§‹åŒ–å®Œæˆ");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"³õÊ¼»¯×´Ì¬Ê±·¢Éú´íÎó: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"åˆå§‹åŒ–çŠ¶æ€æ—¶å‘ç”Ÿé”™è¯¯: {e.Message}\n{e.StackTrace}");
                 enabled = false;
             }
         }
 
         private void Update()
         {
-            // È·±£StateMachineÒÑ³õÊ¼»¯
-            if (StateMachine == null)
-            {
-                Debug.LogError("Update: StateMachineÎª¿Õ£¬ÖØĞÂ³õÊ¼»¯");
-                Init();
-                return;
-            }
-            
             try
             {
+                // ç¡®ä¿StateMachineå·²åˆå§‹åŒ–
+                if (StateMachine == null)
+                {
+                    Debug.LogError("Update: StateMachineä¸ºç©ºï¼Œé‡æ–°åˆå§‹åŒ–");
+                    Init();
+                    return;
+                }
+                
                 SyncStateParameters();
                 
-                // ¸üĞÂµ±Ç°×´Ì¬
+                // æ›´æ–°å½“å‰çŠ¶æ€
                 StateMachine.Update(Time.deltaTime);
                 
-                // ´¦Àí¸÷²ã×´Ì¬µÄÊäÈë
+                // å¤„ç†å„å±‚çŠ¶æ€çš„è¾“å…¥
                 HandleLayerInput();
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"UpdateÖĞ·¢ÉúÒì³£: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"Updateä¸­å‘ç”Ÿå¼‚å¸¸: {e.Message}\n{e.StackTrace}");
             }
         }
         
         private void FixedUpdate()
         {
-            // È·±£StateMachineÒÑ³õÊ¼»¯
+            // ç¡®ä¿StateMachineå·²åˆå§‹åŒ–
             if (StateMachine == null)
             {
-                Debug.LogError("FixedUpdate: StateMachineÎª¿Õ£¬ÖØĞÂ³õÊ¼»¯");
+                Debug.LogError("FixedUpdate: StateMachineä¸ºç©ºï¼Œé‡æ–°åˆå§‹åŒ–");
                 Init();
                 return;
             }
             
             try
             {
-                // ´¦Àí¸÷²ã×´Ì¬µÄÎïÀí¸üĞÂ
+                // å¤„ç†å„å±‚çŠ¶æ€çš„ç‰©ç†æ›´æ–°
                 HandleLayerPhysicsUpdate();
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"FixedUpdateÖĞ·¢ÉúÒì³£: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"FixedUpdateä¸­å‘ç”Ÿå¼‚å¸¸: {e.Message}\n{e.StackTrace}");
             }
         }
         
         private void HandleLayerInput()
         {
-            // ´¦ÀíÖ÷×´Ì¬µÄÊäÈë
-            if (StateMachine.CurrentState is PlayerBaseState baseState)
+            try
             {
-                baseState.HandleInput();
-            }
-            
-            // ´¦Àí¸÷²ã×´Ì¬µÄÊäÈë
-            foreach (var layerState in StateMachine.LayerStates)
-            {
-                if (layerState.Value is PlayerBaseState playerState)
+                // ä¸»å±‚çŠ¶æ€è¾“å…¥å¤„ç†
+                if (StateMachine.CurrentState is PlayerBaseState baseState)
                 {
-                    playerState.HandleInput();
+                    baseState.HandleInput();
                 }
+                
+                // å¤„ç†å„å±‚çŠ¶æ€çš„è¾“å…¥
+                var layerStates = StateMachine.LayerStates.ToList();
+                foreach (var layerState in layerStates)
+                {
+                    if (layerState.Value is PlayerBaseState playerState)
+                    {
+                        playerState.HandleInput();
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"HandleLayerInputå‘ç”Ÿå¼‚å¸¸: {e.Message}\n{e.StackTrace}");
             }
         }
         
         private void HandleLayerPhysicsUpdate()
         {
-            float deltaTime = Time.fixedDeltaTime;
-            
-            // ´¦ÀíÖ÷×´Ì¬µÄÎïÀí¸üĞÂ
-            if (StateMachine.CurrentState is PlayerBaseState baseState)
+            try
             {
-                baseState.PhysicsUpdate(deltaTime);
-            }
-            
-            // ´¦Àí¸÷²ã×´Ì¬µÄÎïÀí¸üĞÂ
-            foreach (var layerState in StateMachine.LayerStates)
-            {
-                if (layerState.Value is PlayerBaseState playerState)
+                float deltaTime = Time.fixedDeltaTime;
+                
+                // ä¸»å±‚çŠ¶æ€ç‰©ç†æ›´æ–°å¤„ç†
+                if (StateMachine.CurrentState is PlayerBaseState baseState)
                 {
-                    playerState.PhysicsUpdate(deltaTime);
+                    baseState.PhysicsUpdate(deltaTime);
                 }
+                
+                // å¤„ç†å„å±‚çŠ¶æ€çš„ç‰©ç†æ›´æ–°
+                var layerStates = StateMachine.LayerStates.ToList();
+                foreach (var layerState in layerStates)
+                {
+                    if (layerState.Value is PlayerBaseState playerState)
+                    {
+                        playerState.PhysicsUpdate(deltaTime);
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"HandleLayerPhysicsUpdateå‘ç”Ÿå¼‚å¸¸: {e.Message}\n{e.StackTrace}");
             }
         }
 
         private void SyncStateParameters()
         {
-            // Í¬²½×´Ì¬µ½×´Ì¬»ú
+            // åŒæ­¥çŠ¶æ€åˆ°çŠ¶æ€æœº
             StateMachine.SetFloat("MoveInput", moveInput);
             StateMachine.SetBool("IsRunning", isRunning);
             StateMachine.SetBool("IsGrounded", isGrounded);
@@ -262,7 +280,7 @@ namespace TrianCatStudio
             StateMachine.SetBool("IsCrouching", isCrouching);
         }
 
-        // ×´Ì¬ÉèÖÃ·½·¨
+        // çŠ¶æ€è®¾ç½®æ–¹æ³•
         public void SetMoveInput(float value) => moveInput = value;
         public void SetRunning(bool value) => isRunning = value;
         public void SetGrounded(bool value) => isGrounded = value;
@@ -270,68 +288,149 @@ namespace TrianCatStudio
         public void SetAiming(bool value) => isAiming = value;
         public void SetCrouching(bool value) => isCrouching = value;
 
-        // ´¥·¢Æ÷·½·¨
+        // è§¦å‘å™¨æ–¹æ³•
         public void TriggerJump()
         {
-            Debug.Log("PlayerStateManager.TriggerJump: ´¥·¢ÌøÔ¾");
-            StateMachine.ResetTrigger("Jump"); // ÏÈÖØÖÃ´¥·¢Æ÷
-            StateMachine.SetTrigger("Jump");
+            Debug.Log("PlayerStateManager.TriggerJump: è§¦å‘è·³è·ƒ");
+            
+            // è·å–å½“å‰åŠ¨ä½œå±‚çŠ¶æ€
+            var currentActionState = StateMachine.GetCurrentStateInLayer((int)StateLayerType.Action);
+            bool isInJumpState = currentActionState?.GetType() == typeof(JumpState);
+            
+            // æ£€æŸ¥æ˜¯å¦å¯ä»¥äºŒæ®µè·³ - ä¿®æ”¹é€»è¾‘ï¼Œä¸å†ä¾èµ–IsGrounded
+            bool canDoubleJump = Player.jumpCount == 1 && !Player.HasDoubleJumped;
+            
+            // å¦‚æœåœ¨è·³è·ƒçŠ¶æ€ï¼Œå°è¯•äºŒæ®µè·³
+            if (isInJumpState)
+            {
+                // å·²ç»åœ¨ç©ºä¸­ï¼Œæ£€æŸ¥æ˜¯å¦å¯ä»¥äºŒæ®µè·³
+                if (canDoubleJump)
+                {
+                    Debug.Log($"PlayerStateManager.TriggerJump: æ£€æµ‹åˆ°äºŒæ®µè·³æ¡ä»¶æ»¡è¶³ - jumpCount={Player.jumpCount}, HasDoubleJumped={Player.HasDoubleJumped}");
+                    TriggerDoubleJump();
+                }
+                else
+                {
+                    Debug.Log($"PlayerStateManager.TriggerJump: äºŒæ®µè·³æ¡ä»¶ä¸æ»¡è¶³ - jumpCount={Player.jumpCount}, HasDoubleJumped={Player.HasDoubleJumped}, IsGrounded={Player.IsGrounded}");
+                }
+            }
+            // å¦‚æœåœ¨åœ°é¢ä¸Šæˆ–å¤„äºåœŸç‹¼æ—¶é—´å†…ï¼Œæ‰§è¡Œæ™®é€šè·³è·ƒ
+            else if (Player.IsGrounded || (Time.time - Player.lastGroundedTime <= Player.coyoteTime))
+            {
+                // åœ¨åœ°é¢ä¸Šï¼Œæ­£å¸¸è·³è·ƒ
+                Debug.Log($"PlayerStateManager.TriggerJump: æ‰§è¡Œæ™®é€šè·³è·ƒ - IsGrounded={Player.IsGrounded}, lastGroundedTime={Time.time - Player.lastGroundedTime:F3}s, coyoteTime={Player.coyoteTime:F3}s");
+                StateMachine.SetTrigger("Jump");
+            }
+            else
+            {
+                Debug.Log($"PlayerStateManager.TriggerJump: ä¸æ»¡è¶³ä»»ä½•è·³è·ƒæ¡ä»¶ - å½“å‰çŠ¶æ€: {currentActionState?.GetType().Name ?? "æ— çŠ¶æ€"}, IsGrounded={Player.IsGrounded}, jumpCount={Player.jumpCount}");
+            }
         }
         
         public void TriggerDoubleJump()
         {
-            Debug.Log("PlayerStateManager.TriggerDoubleJump: ´¥·¢¶ş¶ÎÌø");
-            StateMachine.ResetTrigger("DoubleJump"); // ÏÈÖØÖÃ´¥·¢Æ÷
+            Debug.Log("PlayerStateManager.TriggerDoubleJump: è§¦å‘äºŒæ®µè·³");
+            
+            // ç«‹å³æ›´æ–°çŠ¶æ€ï¼Œç¡®ä¿ä¸ä¼šé‡å¤è§¦å‘
+            Player.HasDoubleJumped = true;
+            Player.jumpCount = 2;
+            
+            // è®¾ç½®è§¦å‘å™¨
             StateMachine.SetTrigger("DoubleJump");
-        }
-        
-        public void TriggerFalling()
-        {
-            StateMachine.ResetTrigger("StartFalling"); // ÏÈÖØÖÃ´¥·¢Æ÷
-            StateMachine.SetTrigger("StartFalling");
+            
+            // ç›´æ¥åˆ‡æ¢åˆ°äºŒæ®µè·³çŠ¶æ€ï¼Œç¡®ä¿ç«‹å³å“åº”
+            ChangeLayerState((int)StateLayerType.Action, DoubleJumpState);
+            
+            // è§¦å‘åŠ¨ç”»
+            if (Player.AnimController != null)
+            {
+                Player.AnimController.TriggerDoubleJump();
+            }
         }
         
         public void TriggerLanding()
         {
-            StateMachine.ResetTrigger("Landing"); // ÏÈÖØÖÃ´¥·¢Æ÷
             StateMachine.SetTrigger("Landing");
         }
         
         public void TriggerHardLanding()
         {
-            StateMachine.ResetTrigger("HardLanding"); // ÏÈÖØÖÃ´¥·¢Æ÷
             StateMachine.SetTrigger("HardLanding");
         }
         
         public void TriggerRoll()
         {
-            StateMachine.ResetTrigger("Roll"); // ÏÈÖØÖÃ´¥·¢Æ÷
             StateMachine.SetTrigger("Roll");
         }
         
         public void TriggerCrouch(bool isCrouching)
         {
-            Debug.Log($"PlayerStateManager.TriggerCrouch: ÉèÖÃÏÂ¶××´Ì¬ = {isCrouching}");
-            
-            // ÉèÖÃÏÂ¶××´Ì¬²ÎÊı
-            StateMachine.SetBool("IsCrouching", isCrouching);
             SetCrouching(isCrouching);
+            StateMachine.SetBool("IsCrouching", isCrouching);
             
             if (isCrouching)
             {
-                Debug.Log("PlayerStateManager: ´¥·¢ÏÂ¶×´¥·¢Æ÷");
-                StateMachine.ResetTrigger("Crouch"); // ÏÈÖØÖÃ´¥·¢Æ÷
                 StateMachine.SetTrigger("Crouch");
-                
-                // ´òÓ¡µ±Ç°²ÎÊı×´Ì¬
-                Debug.Log($"StateMachine²ÎÊı - IsCrouching: {StateMachine.GetBool("IsCrouching")}, Crouch´¥·¢Æ÷: {StateMachine.GetBool("Crouch")}");
             }
         }
         
         public void TriggerSlide()
         {
-            StateMachine.ResetTrigger("Slide"); // ÏÈÖØÖÃ´¥·¢Æ÷
             StateMachine.SetTrigger("Slide");
+        }
+        
+        public void TriggerFire()
+        {
+            Debug.Log("PlayerStateManager.TriggerFire: è§¦å‘å¼€ç«");
+            
+            // è®¾ç½®è§¦å‘å™¨
+            StateMachine.SetTrigger("Fire");
+            
+            // ç›´æ¥åˆ‡æ¢åˆ°å¼€ç«çŠ¶æ€ï¼Œç¡®ä¿ç«‹å³å“åº”
+            ChangeLayerState((int)StateLayerType.UpperBody, FireState);
+        }
+        
+        public void StopFiring()
+        {
+            Debug.Log("PlayerStateManager.StopFiring: åœæ­¢å¼€ç«");
+            
+            // å¦‚æœå½“å‰ä¸ŠåŠèº«å±‚çŠ¶æ€æ˜¯å¼€ç«çŠ¶æ€ï¼Œé€€å‡ºè¯¥å±‚çŠ¶æ€
+            if (StateMachine.GetCurrentStateInLayer((int)StateLayerType.UpperBody) == FireState)
+            {
+                // é€šçŸ¥ FireState åœæ­¢å¼€ç«
+                if (FireState is FireState fireState)
+                {
+                    fireState.StopFiring();
+                }
+                
+                // å¦‚æœæ­£åœ¨ç„å‡†ï¼Œæ¢å¤ç„å‡†çŠ¶æ€
+                if (isAiming)
+                {
+                    ChangeLayerState((int)StateLayerType.UpperBody, AimState);
+                }
+                else
+                {
+                    // å¦åˆ™é€€å‡ºä¸ŠåŠèº«å±‚çŠ¶æ€
+                    ChangeLayerState((int)StateLayerType.UpperBody, null);
+                }
+            }
+        }
+        
+        public void ExitFireState()
+        {
+            // é€€å‡ºå¼€ç«çŠ¶æ€
+            if (StateMachine.GetCurrentStateInLayer((int)StateLayerType.UpperBody) == FireState)
+            {
+                // å¦‚æœå½“å‰ä¸ŠåŠèº«å±‚çŠ¶æ€æ˜¯å¼€ç«çŠ¶æ€ï¼Œé€€å‡ºè¯¥å±‚çŠ¶æ€
+                // å°† null ä¼ é€’ç»™ ChangeLayerState æ–¹æ³•ï¼Œè¡¨ç¤ºé€€å‡ºå½“å‰å±‚çŠ¶æ€
+                ChangeLayerState((int)StateLayerType.UpperBody, null);
+                
+                // å¦‚æœæ­£åœ¨ç„å‡†ï¼Œæ¢å¤ç„å‡†çŠ¶æ€
+                if (isAiming)
+                {
+                    ChangeLayerState((int)StateLayerType.UpperBody, AimState);
+                }
+            }
         }
 
         private void RegisterTransitions()
@@ -341,25 +440,23 @@ namespace TrianCatStudio
                 RegisterBaseLayerTransitions();
                 RegisterActionLayerTransitions();
                 RegisterUpperBodyLayerTransitions();
-                
-                Debug.Log("ËùÓĞ×´Ì¬×ª»»×¢²áÍê³É");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"×¢²á×´Ì¬×ª»»Ê±·¢Éú´íÎó: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"æ³¨å†ŒçŠ¶æ€è½¬æ¢æ—¶å‘ç”Ÿé”™è¯¯: {e.Message}\n{e.StackTrace}");
             }
         }
         
         private void RegisterBaseLayerTransitions()
         {
-            // È·±£ËùÓĞ×´Ì¬¶¼ÒÑÕıÈ·³õÊ¼»¯
+            // ç¡®ä¿åŸºç¡€çŠ¶æ€å·²è¢«æ­£ç¡®åˆå§‹åŒ–
             if (IdleState == null || WalkState == null || RunState == null)
             {
-                Debug.LogError("RegisterBaseLayerTransitions: Ò»Ğ©×´Ì¬Î´³õÊ¼»¯");
-                InitializeStates(); // ³¢ÊÔÖØĞÂ³õÊ¼»¯×´Ì¬
+                Debug.LogError("RegisterBaseLayerTransitions: ä¸€äº›çŠ¶æ€æœªåˆå§‹åŒ–");
+                InitializeStates(); // å°è¯•é‡æ–°åˆå§‹åŒ–çŠ¶æ€
             }
             
-            // »ù´¡ÒÆ¶¯×´Ì¬×ª»»
+            // åŸºç¡€ç§»åŠ¨çŠ¶æ€è½¬æ¢
             AddTransition(IdleState, WalkState,
                 new Condition("MoveInput", ParameterType.Float, ComparisonType.GreaterThan, 0.1f));
 
@@ -376,128 +473,91 @@ namespace TrianCatStudio
         
         private void RegisterActionLayerTransitions()
         {
-            // È·±£ËùÓĞ×´Ì¬¶¼ÒÑÕıÈ·³õÊ¼»¯
-            if (JumpState == null || DoubleJumpState == null || FallingState == null || 
+            // ç¡®ä¿åŠ¨ä½œçŠ¶æ€å·²è¢«æ­£ç¡®åˆå§‹åŒ–
+            if (JumpState == null || DoubleJumpState == null || 
                 LandingState == null || HardLandingState == null || RollState == null)
             {
-                Debug.LogError("RegisterActionLayerTransitions: Ò»Ğ©×´Ì¬Î´³õÊ¼»¯");
-                InitializeStates(); // ³¢ÊÔÖØĞÂ³õÊ¼»¯×´Ì¬
+                Debug.LogError("RegisterActionLayerTransitions: ä¸€äº›çŠ¶æ€æœªåˆå§‹åŒ–");
+                InitializeStates(); // å°è¯•é‡æ–°åˆå§‹åŒ–çŠ¶æ€
             }
             
-            // ÌøÔ¾×´Ì¬×ª»»
+            // è·³è·ƒçŠ¶æ€è½¬æ¢
             AddGlobalTransition((int)StateLayerType.Action, JumpState,
                 new Condition("Jump", ParameterType.Trigger, ComparisonType.Equals, true),
                 new Condition("IsGrounded", ParameterType.Bool, ComparisonType.Equals, true));
-        
-            // ¶ş¶ÎÌø×´Ì¬×ª»»
-            AddTransition(JumpState, DoubleJumpState,
-                new Condition("DoubleJump", ParameterType.Trigger, ComparisonType.Equals, true),
-                new Condition("IsGrounded", ParameterType.Bool, ComparisonType.Equals, false));
+            
+            // æ³¨æ„ï¼šäºŒæ®µè·³è½¬æ¢ç°åœ¨ç”±TriggerDoubleJumpæ–¹æ³•ç›´æ¥å¤„ç†ï¼Œä¸å†ä¾èµ–è§¦å‘å™¨è½¬æ¢
 
-            // ÏÂÂä×´Ì¬×ª»»
-            AddTransition(JumpState, FallingState,
-                new Condition("StartFalling", ParameterType.Trigger, ComparisonType.Equals, true));
-        
-            AddTransition(DoubleJumpState, FallingState,
-                new Condition("StartFalling", ParameterType.Trigger, ComparisonType.Equals, true));
-        
-            // ×ÔÈ»ÏÂÂä£¨´Ó±ßÔµ×ßÏÂ£©
-            AddGlobalTransition((int)StateLayerType.Action, FallingState,
-                new Condition("IsGrounded", ParameterType.Bool, ComparisonType.Equals, false),
-                new Condition("VerticalVelocity", ParameterType.Float, ComparisonType.LessThan, -1f));
-        
-            // ×ÅÂ½×´Ì¬×ª»»
-            AddTransition(FallingState, LandingState,
+            // ç€é™†çŠ¶æ€è½¬æ¢ - ç›´æ¥ä»è·³è·ƒçŠ¶æ€è½¬æ¢åˆ°ç€é™†çŠ¶æ€
+            AddTransition(JumpState, LandingState,
                 new Condition("Landing", ParameterType.Trigger, ComparisonType.Equals, true));
         
-            AddTransition(FallingState, HardLandingState,
+            AddTransition(DoubleJumpState, LandingState,
+                new Condition("Landing", ParameterType.Trigger, ComparisonType.Equals, true));
+                
+            // ç¡¬ç€é™†è½¬æ¢
+            AddTransition(JumpState, HardLandingState,
+                new Condition("HardLanding", ParameterType.Trigger, ComparisonType.Equals, true));
+                
+            AddTransition(DoubleJumpState, HardLandingState,
                 new Condition("HardLanding", ParameterType.Trigger, ComparisonType.Equals, true));
         
-            // ×ÅÂ½»Ö¸´
+            // ç€é™†æ¢å¤
             AddTransition(LandingState, null,
                 new Condition("RecoveryComplete", ParameterType.Trigger, ComparisonType.Equals, true));
         
             AddTransition(HardLandingState, null,
                 new Condition("RecoveryComplete", ParameterType.Trigger, ComparisonType.Equals, true));
-
-            // ·­¹öÈ«¾ÖÖĞ¶Ï
-            AddGlobalTransition((int)StateLayerType.Action, RollState,
-                new Condition("Roll", ParameterType.Trigger, ComparisonType.Equals, true),
-                new Condition("IsGrounded", ParameterType.Bool, ComparisonType.Equals, true));
-        
-            // ´Ó·­¹ö×´Ì¬·µ»Ø
-            AddTransition(RollState, null,
-                new Condition("RollComplete", ParameterType.Trigger, ComparisonType.Equals, true));
                 
-            // ÏÂ¶××´Ì¬×ª»»
-            if (CrouchState != null)
-            {
-                AddGlobalTransition((int)StateLayerType.Action, CrouchState,
-                    new Condition("Crouch", ParameterType.Trigger, ComparisonType.Equals, true),
-                    new Condition("IsGrounded", ParameterType.Bool, ComparisonType.Equals, true),
-                    new Condition("IsCrouching", ParameterType.Bool, ComparisonType.Equals, true));
+            // å…è®¸åœ¨ç€é™†çŠ¶æ€ç›´æ¥è·³è·ƒ
+            AddTransition(LandingState, JumpState,
+                new Condition("Jump", ParameterType.Trigger, ComparisonType.Equals, true));
                 
-                // ´ÓÏÂ¶××´Ì¬·µ»Ø
-                AddTransition(CrouchState, null,
-                    new Condition("IsCrouching", ParameterType.Bool, ComparisonType.Equals, false));
-            }
-            
-            // »¬²ù×´Ì¬×ª»»
-            if (SlideState != null)
-            {
-                AddGlobalTransition((int)StateLayerType.Action, SlideState,
-                    new Condition("Slide", ParameterType.Trigger, ComparisonType.Equals, true),
-                    new Condition("IsGrounded", ParameterType.Bool, ComparisonType.Equals, true));
-                
-                // ´Ó»¬²ù×´Ì¬·µ»Øµ½ÏÂ¶××´Ì¬
-                AddTransition(SlideState, CrouchState,
-                    new Condition("SlideComplete", ParameterType.Trigger, ComparisonType.Equals, true),
-                    new Condition("IsCrouching", ParameterType.Bool, ComparisonType.Equals, true));
-                
-                // ´Ó»¬²ù×´Ì¬Ö±½Ó·µ»Ø
-                AddTransition(SlideState, null,
-                    new Condition("SlideComplete", ParameterType.Trigger, ComparisonType.Equals, true),
-                    new Condition("IsCrouching", ParameterType.Bool, ComparisonType.Equals, false));
-            }
+            AddTransition(HardLandingState, JumpState,
+                new Condition("Jump", ParameterType.Trigger, ComparisonType.Equals, true));
         }
         
         private void RegisterUpperBodyLayerTransitions()
         {
-            // È·±£ËùÓĞ×´Ì¬¶¼ÒÑÕıÈ·³õÊ¼»¯
-            if (AimState == null)
+            // ç¡®ä¿ä¸Šèº«çŠ¶æ€å·²è¢«æ­£ç¡®åˆå§‹åŒ–
+            if (AimState == null || FireState == null)
             {
-                Debug.LogError("RegisterUpperBodyLayerTransitions: AimStateÎ´³õÊ¼»¯");
-                InitializeStates(); // ³¢ÊÔÖØĞÂ³õÊ¼»¯×´Ì¬
+                Debug.LogError("RegisterUpperBodyLayerTransitions: ä¸ŠåŠèº«å±‚çŠ¶æ€æœªåˆå§‹åŒ–");
+                InitializeStates(); // å°è¯•é‡æ–°åˆå§‹åŒ–çŠ¶æ€
             }
             
-            // Ãé×¼×´Ì¬×ª»»
+            // ç„å‡†çŠ¶æ€è½¬æ¢
             AddGlobalTransition((int)StateLayerType.UpperBody, AimState,
                 new Condition("IsAiming", ParameterType.Bool, ComparisonType.Equals, true));
             
-            // ´ÓÃé×¼×´Ì¬·µ»Ø
+            // ä»ç„å‡†çŠ¶æ€æ¢å¤
             AddTransition(AimState, null,
                 new Condition("IsAiming", ParameterType.Bool, ComparisonType.Equals, false));
+                
+            // å¼€ç«çŠ¶æ€è½¬æ¢
+            AddGlobalTransition((int)StateLayerType.UpperBody, FireState,
+                new Condition("Fire", ParameterType.Trigger, ComparisonType.Equals, true));
         }
 
         private void AddTransition(IState from, IState to, params Condition[] conditions)
         {
-            // Èç¹ûfromÎª¿Õ£¬¼ÇÂ¼¾¯¸æµ«²»Ìí¼Ó×ª»»
+            // å¦‚æœfromä¸ºç©ºï¼Œè®°å½•è­¦å‘Šä½†ä¸æ·»åŠ è½¬æ¢
             if (from == null)
             {
-                Debug.LogWarning("³¢ÊÔÎª¿Õ×´Ì¬Ìí¼Ó×ª»»");
+                Debug.LogWarning("å°è¯•ä¸ºç©ºçŠ¶æ€æ·»åŠ è½¬æ¢");
                 return;
             }
             
-            // ÔÊĞítoÎª¿Õ£¬±íÊ¾ÍË³öµ±Ç°×´Ì¬
+            // å¦‚æœtoä¸ºç©ºï¼Œè¡¨ç¤ºé€€å‡ºå½“å‰çŠ¶æ€
             StateMachine.AddTransition(from, to, conditions);
         }
 
         private void AddGlobalTransition(IState to, params Condition[] conditions)
         {
-            // Èç¹ûtoÎª¿Õ£¬¼ÇÂ¼¾¯¸æµ«²»Ìí¼Ó×ª»»
+            // å¦‚æœtoä¸ºç©ºï¼Œè®°å½•è­¦å‘Šä½†ä¸æ·»åŠ è½¬æ¢
             if (to == null)
             {
-                Debug.LogWarning("³¢ÊÔÌí¼Óµ½¿Õ×´Ì¬µÄÈ«¾Ö×ª»»");
+                Debug.LogWarning("å°è¯•æ·»åŠ åˆ°ç©ºçŠ¶æ€çš„å…¨å±€è½¬æ¢");
                 return;
             }
             
@@ -506,10 +566,10 @@ namespace TrianCatStudio
         
         private void AddGlobalTransition(int layer, IState to, params Condition[] conditions)
         {
-            // Èç¹ûtoÎª¿Õ£¬¼ÇÂ¼¾¯¸æµ«²»Ìí¼Ó×ª»»
+            // å¦‚æœtoä¸ºç©ºï¼Œè®°å½•è­¦å‘Šä½†ä¸æ·»åŠ è½¬æ¢
             if (to == null)
             {
-                Debug.LogWarning($"³¢ÊÔÎª²ã {layer} Ìí¼Óµ½¿Õ×´Ì¬µÄÈ«¾Ö×ª»»");
+                Debug.LogWarning($"å°è¯•ä¸ºå±‚ {layer} æ·»åŠ åˆ°ç©ºçŠ¶æ€çš„å…¨å±€è½¬æ¢");
                 return;
             }
             
@@ -518,20 +578,20 @@ namespace TrianCatStudio
 
         private void SetInitialState()
         {
-            // ³õÊ¼»¯Ö÷×´Ì¬
+            // åˆå§‹åŒ–ä¸»çŠ¶æ€
             StateMachine.Initialize(IdleState);
             
-            // ³õÊ¼»¯¸÷²ã×´Ì¬
+            // åˆå§‹åŒ–å„å±‚çŠ¶æ€
             Dictionary<int, IState> initialLayerStates = new Dictionary<int, IState>();
             
-            // Ö»ÓĞµ±×Öµä²»Îª¿ÕÊ±²Å³õÊ¼»¯²ã
+            // åªæœ‰å½“å­—å…¸ä¸ä¸ºç©ºæ—¶æ‰åˆå§‹åŒ–å±‚
             if (initialLayerStates.Count > 0)
             {
                 StateMachine.InitializeLayers(initialLayerStates);
             }
         }
         
-        // ÇĞ»»×´Ì¬·½·¨
+        // åˆ‡æ¢çŠ¶æ€æ–¹æ³•
         public void ChangeState(IState newState)
         {
             StateMachine.ChangeState(newState);

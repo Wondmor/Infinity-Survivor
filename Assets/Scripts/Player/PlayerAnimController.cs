@@ -6,14 +6,14 @@ using System.Linq;
 namespace TrianCatStudio
 {
     /// <summary>
-    /// ½ÇÉ«¶¯»­¿ØÖÆÆ÷
-    /// ¸ºÔğ¹ÜÀí½ÇÉ«µÄ¶¯»­×´Ì¬ºÍ²ÎÊı£¬½«½ÇÉ«×´Ì¬×ª»»Îª¶¯»­±íÏÖ
+    /// è§’è‰²åŠ¨ç”»æ§åˆ¶å™¨
+    /// è´Ÿè´£å¤„ç†æ‰€æœ‰ä¸åŠ¨ç”»ç›¸å…³çš„çŠ¶æ€è½¬æ¢å’Œå‚æ•°è®¾ç½®
     /// </summary>
     [RequireComponent(typeof(Animator))]
     public class PlayerAnimController : MonoBehaviour
     {
-        #region ¶¯»­²ÎÊı¹şÏ£Öµ
-        // ¶¯»­²ÎÊı¹şÏ£Öµ»º´æ£¬Ìá¸ßĞÔÄÜ
+        #region åŠ¨ç”»å‚æ•°å“ˆå¸Œå€¼
+        // ç¼“å­˜åŠ¨ç”»å‚æ•°å“ˆå¸Œå€¼ï¼Œæé«˜æ€§èƒ½
         private readonly int _speedHash = Animator.StringToHash("Speed");
         private readonly int _isGroundedHash = Animator.StringToHash("IsGrounded");
         private readonly int _verticalVelocityHash = Animator.StringToHash("VerticalVelocity");
@@ -34,11 +34,18 @@ namespace TrianCatStudio
         private readonly int _airTimeHash = Animator.StringToHash("AirTime");
         private readonly int _jumpTimeHash = Animator.StringToHash("JumpTime");
         private readonly int _crouchTriggerHash = Animator.StringToHash("Crouch");
+        private readonly int _isFireingHash = Animator.StringToHash("IsFiring");
+        private readonly int _fireTriggerHash = Animator.StringToHash("Fire");
+        
+        // ç§»åŠ¨æ–¹å‘ç›¸å…³çš„å“ˆå¸Œå€¼ï¼ˆç›¸å¯¹äºç„å‡†æ–¹å‘ï¼‰
+        private readonly int _moveDirectionXHash = Animator.StringToHash("MoveDirectionX"); // æ¨ªå‘ç§»åŠ¨ï¼ˆç›¸å¯¹äºç„å‡†æ–¹å‘ï¼‰
+        private readonly int _moveDirectionZHash = Animator.StringToHash("MoveDirectionZ"); // çºµå‘ç§»åŠ¨ï¼ˆç›¸å¯¹äºç„å‡†æ–¹å‘ï¼‰
+        private readonly int _aimingOrFiringHash = Animator.StringToHash("IsAimingOrFiring"); // æ˜¯å¦ç„å‡†æˆ–å¼€ç«
         #endregion
 
-        #region ¶¯»­×´Ì¬Ã¶¾Ù
+        #region åŠ¨ç”»çŠ¶æ€æšä¸¾
         /// <summary>
-        /// ¶¯»­×´Ì¬ÀàĞÍ
+        /// åŠ¨ç”»çŠ¶æ€æšä¸¾
         /// </summary>
         public enum AnimationState
         {
@@ -53,42 +60,34 @@ namespace TrianCatStudio
             Roll = 8,
             Aim = 9,
             Crouch = 10,
-            Slide = 11
+            Slide = 11,
+            Fire = 12
         }
         #endregion
 
-        #region ×é¼şÒıÓÃ
-        [Header("×é¼şÒıÓÃ")]
-        [Tooltip("½ÇÉ«¶¯»­Æ÷×é¼ş")]
+        #region ç»„ä»¶å¼•ç”¨
+        [Header("ç»„ä»¶å¼•ç”¨")]
+        [Tooltip("è§’è‰²åŠ¨ç”»æ§åˆ¶å™¨")]
         [SerializeField] private Animator _animator;
         
-        [Tooltip("½ÇÉ«¿ØÖÆÆ÷")]
+        [Tooltip("è§’è‰²æ§åˆ¶å™¨")]
         [SerializeField] private Player _player;
         #endregion
 
-        #region ¶¯»­ÉèÖÃ
-        [Header("¶¯»­ÉèÖÃ")]
-        [Tooltip("¶¯»­Æ½»¬¹ı¶ÉÊ±¼ä")]
+        #region åŠ¨ç”»è®¾ç½®
+        [Header("åŠ¨ç”»è®¾ç½®")]
+        [Tooltip("åŠ¨ç”»å¹³æ»‘è¿‡æ¸¡æ—¶é—´")]
         [SerializeField] private float _animationDampTime = 0.1f;
         
-        [Tooltip("Ğı×ªÆ½»¬ÏµÊı")]
-        [SerializeField] private float _rotationSmoothTime = 0.1f;
-        
-        [Tooltip("ÇãĞ±¶¯»­ÇúÏß")]
-        [SerializeField] private AnimationCurve _leanCurve = AnimationCurve.Linear(0, 0, 1, 1);
-        
-        [Tooltip("Í·²¿Ğı×ª¶¯»­ÇúÏß")]
-        [SerializeField] private AnimationCurve _headLookCurve = AnimationCurve.Linear(0, 0, 1, 1);
-
         [SerializeField] private float _upperBodyLayerWeight = 0.8f;
         [SerializeField] private float _additiveLayerWeight = 0.5f;
         #endregion
 
-        #region ÔËĞĞÊ±±äÁ¿
-        // µ±Ç°¶¯»­×´Ì¬
+        #region è¿è¡Œæ—¶å˜é‡
+        // å½“å‰åŠ¨ç”»çŠ¶æ€
         private AnimationState _currentAnimState = AnimationState.Idle;
         
-        // ÔË¶¯Ïà¹Ø
+        // é€Ÿåº¦å˜é‡
         private float _currentSpeed = 0f;
         private float _targetSpeed = 0f;
         private float _verticalVelocity = 0f;
@@ -97,52 +96,48 @@ namespace TrianCatStudio
         private bool _isRunning = false;
         private bool _isGrounded = true;
         
-        // ¿ÕÖĞ×´Ì¬Ïà¹Ø
+        // ç©ºä¸­çŠ¶æ€å˜é‡
         private float _airTime = 0f;
         private float _jumpTime = 0f;
         private bool _isFloating = false;
         
-        // Ãé×¼Ïà¹Ø
+        // ç„å‡†å˜é‡
         private bool _isAiming = false;
+        private bool _isFiring = false;
         
-        // ÇãĞ±ºÍĞı×ªÏà¹Ø
-        private float _leanAmount = 0f;
-        private float _headLookX = 0f;
-        private float _headLookY = 0f;
-        private Vector3 _previousRotation;
-        private Vector3 _currentRotation;
+        // ç§»åŠ¨æ–¹å‘
+        private Vector3 _moveDirection = Vector3.forward;
+        private Vector3 _lastMoveDirection = Vector3.forward;
+        private Vector3 _aimDirection = Vector3.forward;
         #endregion
 
-        #region UnityÉúÃüÖÜÆÚ
+        #region Unityç”Ÿå‘½å‘¨æœŸæ–¹æ³•
         private void Awake()
         {
-            // »ñÈ¡×é¼şÒıÓÃ
+            // è·å–å¿…è¦ç»„ä»¶
             if (_animator == null)
                 _animator = GetComponent<Animator>();
                 
             if (_player == null)
                 _player = GetComponent<Player>();
                 
-            // ÉèÖÃ²ãÈ¨ÖØ
-            _animator.SetLayerWeight(1, 1.0f); // ¶¯×÷²ã
-            _animator.SetLayerWeight(2, _upperBodyLayerWeight); // ÉÏ°ëÉí²ã
-            _animator.SetLayerWeight(3, _additiveLayerWeight); // ¸½¼Ó²ã
+            // è®¾ç½®å±‚æƒé‡
+            _animator.SetLayerWeight(1, 1.0f); // åŠ¨ä½œå±‚
+            _animator.SetLayerWeight(2, _upperBodyLayerWeight); // ä¸ŠåŠèº«å±‚
+            _animator.SetLayerWeight(3, _additiveLayerWeight); // é™„åŠ å±‚
         }
 
         private void Update()
         {
             UpdateAnimationParameters();
-            
-            // È·±£ËùÓĞ´¥·¢Æ÷ÔÚÃ¿Ö¡½áÊøÊ±±»ÖØÖÃ
-            ResetAllTriggers();
         }
         #endregion
 
-        #region ¹«¹²·½·¨
+        #region å…¬å…±æ–¹æ³•
         /// <summary>
-        /// ÉèÖÃ¶¯»­×´Ì¬
+        /// è®¾ç½®åŠ¨ç”»çŠ¶æ€
         /// </summary>
-        /// <param name="state">Ä¿±ê¶¯»­×´Ì¬</param>
+        /// <param name="state">ç›®æ ‡åŠ¨ç”»çŠ¶æ€</param>
         public void SetAnimationState(AnimationState state)
         {
             if (_currentAnimState == state)
@@ -150,126 +145,115 @@ namespace TrianCatStudio
                 
             _currentAnimState = state;
             
-            // ¸ù¾İ×´Ì¬ÉèÖÃ¶¯»­²ÎÊı
+            // è®¾ç½®çŠ¶æ€åˆ°åŠ¨ç”»æ§åˆ¶å™¨
             _animator.SetInteger(_motionStateHash, (int)state);
             
-            // ¸ù¾İ×´Ì¬´¥·¢ÏàÓ¦µÄ¶¯»­
+            // æ ¹æ®çŠ¶æ€è§¦å‘å¯¹åº”çš„åŠ¨ç”»
             switch (state)
             {
                 case AnimationState.Jump:
-                    // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-                    _animator.ResetTrigger(_jumpTriggerHash);
                     _animator.SetTrigger(_jumpTriggerHash);
+                    // ç«‹å³é‡ç½®è§¦å‘å™¨ï¼Œé˜²æ­¢æŒç»­è§¦å‘
+                    StartCoroutine(ResetTriggerNextFrame(_jumpTriggerHash));
                     break;
                 case AnimationState.DoubleJump:
-                    // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-                    _animator.ResetTrigger(_doubleJumpTriggerHash);
                     _animator.SetTrigger(_doubleJumpTriggerHash);
+                    StartCoroutine(ResetTriggerNextFrame(_doubleJumpTriggerHash));
                     break;
                 case AnimationState.Fall:
-                    // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-                    _animator.ResetTrigger(_fallTriggerHash);
                     _animator.SetTrigger(_fallTriggerHash);
+                    StartCoroutine(ResetTriggerNextFrame(_fallTriggerHash));
                     break;
                 case AnimationState.Land:
-                    // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-                    _animator.ResetTrigger(_landTriggerHash);
                     _animator.SetTrigger(_landTriggerHash);
+                    StartCoroutine(ResetTriggerNextFrame(_landTriggerHash));
                     break;
                 case AnimationState.HardLand:
-                    // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-                    _animator.ResetTrigger(_hardLandTriggerHash);
                     _animator.SetTrigger(_hardLandTriggerHash);
+                    StartCoroutine(ResetTriggerNextFrame(_hardLandTriggerHash));
                     break;
                 case AnimationState.Roll:
-                    // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-                    _animator.ResetTrigger(_rollTriggerHash);
                     _animator.SetTrigger(_rollTriggerHash);
+                    StartCoroutine(ResetTriggerNextFrame(_rollTriggerHash));
                     break;
             }
         }
 
         /// <summary>
-        /// ´¥·¢ÌøÔ¾¶¯»­
+        /// è§¦å‘è·³è·ƒåŠ¨ç”»
         /// </summary>
         public void TriggerJump()
         {
-            // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-            _animator.ResetTrigger(_jumpTriggerHash);
             _animator.SetTrigger(_jumpTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_jumpTriggerHash));
             _jumpTime = 0f;
         }
 
         /// <summary>
-        /// ´¥·¢¶ş¶ÎÌø¶¯»­
+        /// è§¦å‘äºŒæ®µè·³åŠ¨ç”»
         /// </summary>
         public void TriggerDoubleJump()
         {
-            // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-            _animator.ResetTrigger(_doubleJumpTriggerHash);
             _animator.SetTrigger(_doubleJumpTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_doubleJumpTriggerHash));
             _jumpTime = 0f;
         }
 
         /// <summary>
-        /// ´¥·¢ÏÂÂä¶¯»­
+        /// è§¦å‘ä¸‹è½åŠ¨ç”»
         /// </summary>
         public void TriggerFall()
         {
-            // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-            _animator.ResetTrigger(_fallTriggerHash);
             _animator.SetTrigger(_fallTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_fallTriggerHash));
             _airTime = 0f;
         }
 
         /// <summary>
-        /// ´¥·¢×ÅÂ½¶¯»­
+        /// è§¦å‘ç€é™†åŠ¨ç”»
         /// </summary>
         public void TriggerLand()
         {
-            // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-            _animator.ResetTrigger(_landTriggerHash);
             _animator.SetTrigger(_landTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_landTriggerHash));
         }
 
         /// <summary>
-        /// ´¥·¢Ó²×ÅÂ½¶¯»­
+        /// è§¦å‘ç¡¬ç€é™†åŠ¨ç”»
         /// </summary>
         public void TriggerHardLand()
         {
-            // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-            _animator.ResetTrigger(_hardLandTriggerHash);
             _animator.SetTrigger(_hardLandTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_hardLandTriggerHash));
         }
 
         /// <summary>
-        /// ´¥·¢·­¹ö¶¯»­
+        /// è§¦å‘ç¿»æ»šåŠ¨ç”»
         /// </summary>
         public void TriggerRoll()
         {
-            // ÏÈÖØÖÃ´¥·¢Æ÷£¬È·±£²»»áÖØ¸´´¥·¢
-            _animator.ResetTrigger(_rollTriggerHash);
             _animator.SetTrigger(_rollTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_rollTriggerHash));
         }
 
         /// <summary>
-        /// ÉèÖÃÏÂ¶××´Ì¬
+        /// è®¾ç½®ä¸‹è¹²çŠ¶æ€
         /// </summary>
-        /// <param name="isCrouching">ÊÇ·ñÏÂ¶×</param>
+        /// <param name="isCrouching">æ˜¯å¦ä¸‹è¹²</param>
         public void SetCrouchState(bool isCrouching)
         {
-            Debug.Log($"PlayerAnimController.SetCrouchState: ÉèÖÃÏÂ¶××´Ì¬ = {isCrouching}");
+            Debug.Log($"PlayerAnimController.SetCrouchState: è®¾ç½®ä¸‹è¹²çŠ¶æ€ = {isCrouching}");
             
             _animator.SetBool(_isCrouchingHash, isCrouching);
             
             if (isCrouching)
             {
-                Debug.Log("PlayerAnimController: ´¥·¢ÏÂ¶×¶¯»­×´Ì¬");
+                Debug.Log("PlayerAnimController: è®¾ç½®ä¸ºä¸‹è¹²åŠ¨ç”»çŠ¶æ€");
                 SetAnimationState(AnimationState.Crouch);
             }
             else if (_currentAnimState == AnimationState.Crouch)
             {
-                // Èç¹ûµ±Ç°ÊÇÏÂ¶××´Ì¬£¬Ôò»Ö¸´µ½ºÏÊÊµÄÒÆ¶¯×´Ì¬
+                // æ ¹æ®å½“å‰æ˜¯å¦ç§»åŠ¨æ¥æ¢å¤åˆ°åˆé€‚çš„åŠ¨ç”»çŠ¶æ€
                 if (_isMoving)
                 {
                     if (_isRunning)
@@ -285,47 +269,49 @@ namespace TrianCatStudio
         }
         
         /// <summary>
-        /// Ö±½Ó´¥·¢ÏÂ¶×¶¯»­£¨ÓÃÓÚµ÷ÊÔ£©
+        /// ç›´æ¥è§¦å‘ä¸‹è¹²åŠ¨ç”»ï¼ˆç”¨äºè¿‡æ¸¡ï¼‰
         /// </summary>
         public void TriggerCrouchAnimation()
         {
-            Debug.Log("PlayerAnimController.TriggerCrouchAnimation: Ö±½Ó´¥·¢ÏÂ¶×¶¯»­");
+            Debug.Log("PlayerAnimController.TriggerCrouchAnimation: ç›´æ¥è§¦å‘ä¸‹è¹²åŠ¨ç”»");
             
-            // ÉèÖÃÏÂ¶××´Ì¬
+            // è®¾ç½®ä¸‹è¹²çŠ¶æ€
             _animator.SetBool(_isCrouchingHash, true);
             
-            // ´¥·¢ÏÂ¶×´¥·¢Æ÷
+            // è§¦å‘ä¸‹è¹²è§¦å‘å™¨
             _animator.SetTrigger(_crouchTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_crouchTriggerHash));
             
-            // ÉèÖÃ¶¯»­×´Ì¬
+            // è®¾ç½®åŠ¨ç”»çŠ¶æ€
             SetAnimationState(AnimationState.Crouch);
             
-            // ´òÓ¡Animator²ÎÊı
-            Debug.Log($"Animator²ÎÊı - IsCrouching: {_animator.GetBool(_isCrouchingHash)}");
+            // æ‰“å°Animatorå‚æ•°
+            Debug.Log($"Animatorå‚æ•° - IsCrouching: {_animator.GetBool(_isCrouchingHash)}");
         }
 
         /// <summary>
-        /// ´¥·¢»¬²ù¶¯»­
+        /// è§¦å‘æ»‘è¡ŒåŠ¨ç”»
         /// </summary>
         public void TriggerSlide()
         {
             _animator.SetTrigger(_slideHash);
+            StartCoroutine(ResetTriggerNextFrame(_slideHash));
             SetAnimationState(AnimationState.Slide);
         }
 
         /// <summary>
-        /// ÉèÖÃÒÆ¶¯×´Ì¬
+        /// è®¾ç½®ç§»åŠ¨çŠ¶æ€
         /// </summary>
-        /// <param name="isMoving">ÊÇ·ñÒÆ¶¯</param>
-        /// <param name="isRunning">ÊÇ·ñ±¼ÅÜ</param>
-        /// <param name="speed">ÒÆ¶¯ËÙ¶È</param>
+        /// <param name="isMoving">æ˜¯å¦ç§»åŠ¨</param>
+        /// <param name="isRunning">æ˜¯å¦å¥”è·‘</param>
+        /// <param name="speed">ç§»åŠ¨é€Ÿåº¦</param>
         public void SetMovementState(bool isMoving, bool isRunning, float speed)
         {
             _isMoving = isMoving;
             _isRunning = isRunning;
             _targetSpeed = speed;
             
-            // ¸ù¾İÒÆ¶¯×´Ì¬ÉèÖÃ¶¯»­×´Ì¬
+            // æ ¹æ®ç§»åŠ¨çŠ¶æ€è®¾ç½®åŠ¨ç”»çŠ¶æ€
             if (!_isMoving)
             {
                 SetAnimationState(AnimationState.Idle);
@@ -341,21 +327,21 @@ namespace TrianCatStudio
         }
 
         /// <summary>
-        /// ÉèÖÃ½ÓµØ×´Ì¬
+        /// è®¾ç½®æ¥åœ°çŠ¶æ€
         /// </summary>
-        /// <param name="isGrounded">ÊÇ·ñ½ÓµØ</param>
-        /// <param name="verticalVelocity">´¹Ö±ËÙ¶È</param>
+        /// <param name="isGrounded">æ˜¯å¦æ¥åœ°</param>
+        /// <param name="verticalVelocity">å‚ç›´é€Ÿåº¦</param>
         public void SetGroundedState(bool isGrounded, float verticalVelocity)
         {
             _isGrounded = isGrounded;
             _verticalVelocity = verticalVelocity;
             
-            // ¸üĞÂ¿ÕÖĞÊ±¼ä
+            // æ›´æ–°ç©ºä¸­æ—¶é—´
             if (!_isGrounded)
             {
                 _airTime += Time.deltaTime;
                 
-                // ¼ì²âÊÇ·ñÓ¦¸Ã½øÈëÆ¯¸¡×´Ì¬
+                // é•¿æ—¶é—´ç©ºä¸­åˆ™è¿›å…¥æ¼‚æµ®çŠ¶æ€
                 if (_airTime > 0.8f)
                 {
                     _isFloating = true;
@@ -369,27 +355,30 @@ namespace TrianCatStudio
         }
 
         /// <summary>
-        /// ÉèÖÃÃé×¼×´Ì¬
+        /// è®¾ç½®ç„å‡†çŠ¶æ€
         /// </summary>
-        /// <param name="isAiming">ÊÇ·ñÃé×¼</param>
+        /// <param name="isAiming">æ˜¯å¦ç„å‡†</param>
         public void SetAimingState(bool isAiming)
         {
             _isAiming = isAiming;
+            
+            // æ›´æ–°æ˜¯å¦ç„å‡†æˆ–å¼€ç«çŠ¶æ€
+            UpdateAimingOrFiringState();
         }
 
         /// <summary>
-        /// ÉèÖÃË®Æ½ËÙ¶È
+        /// è®¾ç½®æ°´å¹³é€Ÿåº¦
         /// </summary>
-        /// <param name="horizontalSpeed">Ë®Æ½ËÙ¶È</param>
+        /// <param name="horizontalSpeed">æ°´å¹³é€Ÿåº¦</param>
         public void SetHorizontalSpeed(float horizontalSpeed)
         {
             _horizontalSpeed = horizontalSpeed;
         }
 
         /// <summary>
-        /// ¸üĞÂÌøÔ¾Ê±¼ä
+        /// æ›´æ–°è·³è·ƒæ—¶é—´
         /// </summary>
-        /// <param name="deltaTime">Ê±¼äÔöÁ¿</param>
+        /// <param name="deltaTime">æ—¶é—´å¢é‡</param>
         public void UpdateJumpTime(float deltaTime)
         {
             _jumpTime += deltaTime;
@@ -408,9 +397,9 @@ namespace TrianCatStudio
         }
 
         /// <summary>
-        /// ÉèÖÃÆ¯¸¡×´Ì¬
+        /// è®¾ç½®æ¼‚æµ®çŠ¶æ€
         /// </summary>
-        /// <param name="isFloating">ÊÇ·ñ´¦ÓÚÆ¯¸¡×´Ì¬</param>
+        /// <param name="isFloating">æ˜¯å¦å¤„äºæ¼‚æµ®çŠ¶æ€</param>
         public void SetFloatingState(bool isFloating)
         {
             _isFloating = isFloating;
@@ -418,49 +407,166 @@ namespace TrianCatStudio
         }
 
         /// <summary>
-        /// ÖØÖÃËùÓĞ×´Ì¬
+        /// è®¾ç½®å¼€ç«çŠ¶æ€
+        /// </summary>
+        /// <param name="isFiring">æ˜¯å¦å¼€ç«</param>
+        public void SetFiringState(bool isFiring)
+        {
+            _isFiring = isFiring;
+                
+            // æ›´æ–°æ˜¯å¦ç„å‡†æˆ–å¼€ç«çŠ¶æ€
+            UpdateAimingOrFiringState();
+            
+            // è®¾ç½®åŠ¨ç”»å‚æ•°
+            _animator.SetBool(_isFireingHash, isFiring);
+            
+            if (isFiring)
+            {
+                SetAnimationState(AnimationState.Fire);
+            }
+            else if (_currentAnimState == AnimationState.Fire)
+            {
+                // å¦‚æœå½“å‰æ˜¯å¼€ç«çŠ¶æ€ï¼Œæ ¹æ®å…¶ä»–çŠ¶æ€æ¢å¤
+                if (_isAiming)
+                {
+                    SetAnimationState(AnimationState.Aim);
+                }
+                else if (_isMoving)
+                {
+                    if (_isRunning)
+                        SetAnimationState(AnimationState.Run);
+                    else
+                        SetAnimationState(AnimationState.Walk);
+                }
+                else
+                {
+                    SetAnimationState(AnimationState.Idle);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// è§¦å‘å¼€ç«åŠ¨ç”»
+        /// </summary>
+        public void TriggerFire()
+        {
+            Debug.Log("PlayerAnimController.TriggerFire: è§¦å‘å¼€ç«åŠ¨ç”»");
+            
+            _animator.SetTrigger(_fireTriggerHash);
+            StartCoroutine(ResetTriggerNextFrame(_fireTriggerHash));
+            
+            // ç¡®ä¿å¼€ç«çŠ¶æ€ä¸ºtrue
+            if (!_isFiring)
+            {
+                SetFiringState(true);
+            }
+        }
+
+        /// <summary>
+        /// é‡ç½®æ‰€æœ‰çŠ¶æ€
         /// </summary>
         public void ResetAllStates()
         {
-            _isFloating = false;
-            _animator.SetBool(_isFloatingHash, false);
-            _airTime = 0f;
-            _jumpTime = 0f;
+            _currentAnimState = AnimationState.Idle;
+            _animator.SetInteger(_motionStateHash, (int)_currentAnimState);
+            
+            _isMoving = false;
+            _isRunning = false;
+            _isGrounded = true;
+            _isAiming = false;
+            _isFiring = false;
+            
+            _animator.SetBool(_isMovingHash, _isMoving);
+            _animator.SetBool(_isRunningHash, _isRunning);
+            _animator.SetBool(_isGroundedHash, _isGrounded);
+            _animator.SetBool(_isAimingHash, _isAiming);
+            _animator.SetBool(_isFireingHash, _isFiring);
+            
+            _animator.SetFloat(_speedHash, 0f);
+            _animator.SetFloat(_verticalVelocityHash, 0f);
+            _animator.SetFloat(_horizontalSpeedHash, 0f);
+            
+            ResetAnimatorTriggers();
         }
 
         /// <summary>
-        /// ÖØÖÃÌøÔ¾´¥·¢Æ÷
+        /// æ›´æ–°æ˜¯å¦ç„å‡†æˆ–å¼€ç«çŠ¶æ€
         /// </summary>
-        public void ResetJumpTrigger()
+        private void UpdateAimingOrFiringState()
         {
-            _animator.ResetTrigger(_jumpTriggerHash);
+            bool isAimingOrFiring = _isAiming || _isFiring;
+            _animator.SetBool(_aimingOrFiringHash, isAimingOrFiring);
         }
-
+        
         /// <summary>
-        /// ÖØÖÃËùÓĞ´¥·¢Æ÷
+        /// è®¾ç½®ç„å‡†æ–¹å‘
         /// </summary>
-        public void ResetAllTriggers()
+        /// <param name="aimDirection">ç„å‡†æ–¹å‘</param>
+        public void SetAimDirection(Vector3 aimDirection)
         {
-            _animator.ResetTrigger(_jumpTriggerHash);
-            _animator.ResetTrigger(_doubleJumpTriggerHash);
-            _animator.ResetTrigger(_fallTriggerHash);
-            _animator.ResetTrigger(_landTriggerHash);
-            _animator.ResetTrigger(_hardLandTriggerHash);
-            _animator.ResetTrigger(_rollTriggerHash);
-            _animator.ResetTrigger(_slideHash);
+            if (aimDirection.magnitude < 0.1f)
+                return;
+                
+            _aimDirection = aimDirection.normalized;
+            
+            // å¦‚æœæœ‰ç§»åŠ¨æ–¹å‘ï¼Œæ›´æ–°ç›¸å¯¹äºç„å‡†æ–¹å‘çš„ç§»åŠ¨
+            if (_moveDirection.magnitude > 0.1f)
+            {
+                UpdateRelativeMovement();
+            }
+        }
+        
+        /// <summary>
+        /// è®¾ç½®ç§»åŠ¨æ–¹å‘
+        /// </summary>
+        /// <param name="moveDirection">ç§»åŠ¨æ–¹å‘</param>
+        public void SetMoveDirection(Vector3 moveDirection)
+        {
+            if (moveDirection.magnitude < 0.1f)
+                return;
+                
+            _lastMoveDirection = _moveDirection;
+            _moveDirection = moveDirection.normalized;
+            
+            // æ›´æ–°ç›¸å¯¹äºç„å‡†æ–¹å‘çš„ç§»åŠ¨
+            UpdateRelativeMovement();
+        }
+        
+        /// <summary>
+        /// æ›´æ–°ç›¸å¯¹äºç„å‡†æ–¹å‘çš„ç§»åŠ¨
+        /// </summary>
+        private void UpdateRelativeMovement()
+        {
+            // è·å–ç„å‡†æ–¹å‘çš„æ°´å¹³åˆ†é‡
+            Vector3 horizontalAimDir = new Vector3(_aimDirection.x, 0, _aimDirection.z).normalized;
+            
+            // å¦‚æœç„å‡†æ–¹å‘æˆ–ç§»åŠ¨æ–¹å‘æ— æ•ˆï¼Œç›´æ¥è¿”å›
+            if (horizontalAimDir.magnitude < 0.1f || _moveDirection.magnitude < 0.1f)
+                return;
+                
+            // è®¡ç®—ç„å‡†æ–¹å‘çš„å³å‘é‡
+            Vector3 aimRight = Vector3.Cross(Vector3.up, horizontalAimDir).normalized;
+            
+            // è®¡ç®—ç§»åŠ¨æ–¹å‘åœ¨ç„å‡†å‰æ–¹å’Œå³æ–¹çš„æŠ•å½±
+            float forwardAmount = Vector3.Dot(_moveDirection, horizontalAimDir);
+            float rightAmount = Vector3.Dot(_moveDirection, aimRight);
+            
+            // è®¾ç½®ç§»åŠ¨æ–¹å‘å‚æ•°ï¼ˆç›¸å¯¹äºç„å‡†æ–¹å‘ï¼‰
+            _animator.SetFloat(_moveDirectionXHash, rightAmount);
+            _animator.SetFloat(_moveDirectionZHash, forwardAmount);
         }
         #endregion
 
-        #region Ë½ÓĞ·½·¨
+        #region ç§æœ‰æ–¹æ³•
         /// <summary>
-        /// ¸üĞÂ¶¯»­²ÎÊı
+        /// æ›´æ–°åŠ¨ç”»å‚æ•°
         /// </summary>
         private void UpdateAnimationParameters()
         {
-            // Æ½»¬¹ı¶ÉËÙ¶È
+            // å¹³æ»‘è¿‡æ¸¡é€Ÿåº¦
             _currentSpeed = Mathf.Lerp(_currentSpeed, _targetSpeed, _animationDampTime * Time.deltaTime);
             
-            // ¸üĞÂ»ù±¾ÔË¶¯²ÎÊı
+            // æ›´æ–°åŸºæœ¬è¿åŠ¨å‚æ•°
             _animator.SetFloat(_speedHash, _currentSpeed);
             _animator.SetBool(_isMovingHash, _isMoving);
             _animator.SetBool(_isRunningHash, _isRunning);
@@ -468,58 +574,40 @@ namespace TrianCatStudio
             _animator.SetFloat(_verticalVelocityHash, _verticalVelocity);
             _animator.SetFloat(_horizontalSpeedHash, _horizontalSpeed);
             
-            // ¸üĞÂ¿ÕÖĞ×´Ì¬²ÎÊı
+            // æ›´æ–°ç©ºä¸­çŠ¶æ€å‚æ•°
             _animator.SetBool(_isFloatingHash, _isFloating);
             _animator.SetFloat(_airTimeHash, _airTime);
             _animator.SetFloat(_jumpTimeHash, _jumpTime);
             
-            // ¸üĞÂÃé×¼×´Ì¬
+            // æ›´æ–°ç„å‡†çŠ¶æ€
             _animator.SetBool(_isAimingHash, _isAiming);
-            
-            // ¼ÆËãÇãĞ±ºÍĞı×ª
-            CalculateRotationalAdditives();
         }
 
         /// <summary>
-        /// ¼ÆËãĞı×ªÏà¹ØµÄ¶¯»­²ÎÊı
+        /// é‡ç½®æ‰€æœ‰è§¦å‘å™¨
         /// </summary>
-        private void CalculateRotationalAdditives()
+        private void ResetAnimatorTriggers()
         {
-            // »ñÈ¡µ±Ç°Ğı×ª
-            _currentRotation = transform.forward;
+            _animator.ResetTrigger(_jumpTriggerHash);
+            _animator.ResetTrigger(_doubleJumpTriggerHash);
+            _animator.ResetTrigger(_fallTriggerHash);
+            _animator.ResetTrigger(_landTriggerHash);
+            _animator.ResetTrigger(_hardLandTriggerHash);
+            _animator.ResetTrigger(_rollTriggerHash);
+            _animator.ResetTrigger(_crouchTriggerHash);
+            _animator.ResetTrigger(_fireTriggerHash);
+        }
+
+        /// <summary>
+        /// åœ¨ä¸‹ä¸€å¸§é‡ç½®è§¦å‘å™¨
+        /// </summary>
+        private IEnumerator ResetTriggerNextFrame(int triggerHash)
+        {
+            // ç­‰å¾…ä¸€å¸§ï¼Œç¡®ä¿åŠ¨ç”»ç³»ç»Ÿå·²ç»æ¥æ”¶åˆ°è§¦å‘å™¨
+            yield return null;
             
-            // ¼ÆËãĞı×ªËÙÂÊ
-            float rotationRate = 0f;
-            if (_previousRotation != Vector3.zero)
-            {
-                rotationRate = Vector3.SignedAngle(_currentRotation, _previousRotation, Vector3.up) / Time.deltaTime * -1f;
-            }
-             
-            // ¼ÆËãÇãĞ±Á¿
-            float targetLeanAmount = rotationRate * 0.01f;
-            _leanAmount = Mathf.Lerp(_leanAmount, targetLeanAmount, _rotationSmoothTime * Time.deltaTime);
-            
-            // ¼ÆËãÍ·²¿Ğı×ª
-            float targetHeadLookX = rotationRate * 0.005f;
-            _headLookX = Mathf.Lerp(_headLookX, targetHeadLookX, _rotationSmoothTime * Time.deltaTime);
-            
-            // Ó¦ÓÃÇãĞ±ºÍÍ·²¿Ğı×ªÇúÏß
-            float leanMultiplier = _leanCurve.Evaluate(Mathf.Abs(_leanAmount));
-            float headLookMultiplier = _headLookCurve.Evaluate(Mathf.Abs(_headLookX));
-            
-            // ÉèÖÃ¶¯»­²ÎÊı
-            // ×¢Òâ£ºÕâĞ©²ÎÊıĞèÒªÔÚAnimatorÖĞ¶¨Òå
-            if (_animator.parameters.Any(p => p.name == "LeanAmount"))
-                _animator.SetFloat("LeanAmount", _leanAmount * leanMultiplier);
-                
-            if (_animator.parameters.Any(p => p.name == "HeadLookX"))
-                _animator.SetFloat("HeadLookX", _headLookX * headLookMultiplier);
-                
-            if (_animator.parameters.Any(p => p.name == "HeadLookY"))
-                _animator.SetFloat("HeadLookY", _headLookY);
-            
-            // ±£´æµ±Ç°Ğı×ªÎªÏÂÒ»Ö¡µÄÇ°Ò»Ö¡Ğı×ª
-            _previousRotation = _currentRotation;
+            // é‡ç½®è§¦å‘å™¨
+            _animator.ResetTrigger(triggerHash);
         }
         #endregion
     }

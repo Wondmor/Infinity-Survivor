@@ -79,26 +79,41 @@ namespace TrianCatStudio
             foreach (var condition in Conditions)
             {
                 if (!parameters.TryGetValue(condition.ParameterName, out object currentValue))
+                {
+                    // 只在调试模式下打印日志
+                    #if UNITY_EDITOR
+                    // Debug.Log($"条件不满足: 参数 {condition.ParameterName} 不存在");
+                    #endif
                     return false;
+                }
 
+                bool conditionMet = false;
                 switch (condition.Type)
                 {
                     case ParameterType.Bool:
-                        if (!CheckBool((bool)currentValue, (bool)condition.ExpectedValue, condition.Comparison))
-                            return false;
+                        conditionMet = CheckBool((bool)currentValue, (bool)condition.ExpectedValue, condition.Comparison);
                         break;
                     case ParameterType.Int:
-                        if (!CheckInt((int)currentValue, (int)condition.ExpectedValue, condition.Comparison))
-                            return false;
+                        conditionMet = CheckInt((int)currentValue, (int)condition.ExpectedValue, condition.Comparison);
                         break;
                     case ParameterType.Float:
-                        if (!CheckFloat((float)currentValue, (float)condition.ExpectedValue, condition.Comparison))
-                            return false;
+                        conditionMet = CheckFloat((float)currentValue, (float)condition.ExpectedValue, condition.Comparison);
                         break;
                     case ParameterType.Trigger:
-                        if (!CheckTrigger((bool)currentValue))
-                            return false;
+                        conditionMet = CheckTrigger((bool)currentValue);
                         break;
+                }
+                
+                if (!conditionMet)
+                {
+                    // 只在调试模式下打印日志，且只对触发器类型打印
+                    #if UNITY_EDITOR
+                    if (condition.Type == ParameterType.Trigger)
+                    {
+                        Debug.Log($"触发器条件不满足: {condition.ParameterName} = {currentValue}");
+                    }
+                    #endif
+                    return false;
                 }
             }
 
@@ -134,7 +149,11 @@ namespace TrianCatStudio
             _ => false,
         };
 
-        private bool CheckTrigger(bool current) => current;
+        private bool CheckTrigger(bool current)
+        {
+            // 只检查触发器是否为true，不重置它
+            return current;
+        }
     }
     
     /// <summary>
@@ -142,6 +161,8 @@ namespace TrianCatStudio
     /// </summary>
     public class StateMachine
     {
+        private readonly object stateLock = new object();
+        
         // 当前状态
         private IState currentState;
         public IState CurrentState => currentState;
@@ -157,9 +178,6 @@ namespace TrianCatStudio
         // 参数字典
         private Dictionary<string, object> parameters = new Dictionary<string, object>();
         
-        // 需要在下一帧重置的触发器列表
-        private HashSet<string> _triggersToReset = new HashSet<string>();
-
         // 进入初始状态
         public void Initialize(IState startState)
         {
@@ -195,32 +213,34 @@ namespace TrianCatStudio
         {
             try
             {
-                // 检查全局转换
-                foreach (var layer in globalTransitions.Keys.ToList())
+                lock (stateLock)
                 {
-                    CheckGlobalTransitions(layer);
-                }
-                
-                // 检查当前状态的转换
-                CheckTransitions();
-                
-                // 更新当前状态
-                if (currentState != null)
-                {
-                    currentState.Update(deltaTime);
-                }
-                
-                // 更新各层状态
-                foreach (var layerState in layerStates.ToList())
-                {
-                    if (layerState.Value != null)
+                    // 检查全局转换
+                    var layersToCheck = globalTransitions.Keys.ToList();
+                    foreach (var layer in layersToCheck)
                     {
-                        layerState.Value.Update(deltaTime);
+                        CheckGlobalTransitions(layer);
+                    }
+                    
+                    // 检查当前状态的转换
+                    CheckTransitions();
+                    
+                    // 更新当前状态
+                    if (currentState != null)
+                    {
+                        currentState.Update(deltaTime);
+                    }
+                    
+                    // 更新各层状态
+                    var statesToUpdate = layerStates.ToList();
+                    foreach (var layerState in statesToUpdate)
+                    {
+                        if (layerState.Value != null)
+                        {
+                            layerState.Value.Update(deltaTime);
+                        }
                     }
                 }
-                
-                // 在每帧结束时清理触发器
-                ClearTriggers();
             }
             catch (System.Exception e)
             {
@@ -310,92 +330,77 @@ namespace TrianCatStudio
             return 0f;
         }
 
-        // 修改触发器逻辑，避免立即检查转换
+        // 设置触发器
         public void SetTrigger(string name)
         {
-            Debug.Log($"StateMachine.SetTrigger: 设置触发器 {name}");
-            
-            // 先重置触发器，确保不会重复触发
-            ResetTrigger(name);
-            
-            // 设置触发器
-            parameters[name] = true;
-            
-            // 记录触发器，以便在下一帧自动重置
-            _triggersToReset.Add(name);
-        }
-
-        // 添加清理触发器的方法
-        public void ClearTriggers()
-        {
-            // 重置所有需要重置的触发器
-            foreach (var triggerName in _triggersToReset)
+            #if UNITY_EDITOR
+            // 只在编辑器模式下，且只对跳跃相关的触发器输出日志
+            if (name.Contains("Jump") || name.Contains("Fall"))
             {
-                if (parameters.ContainsKey(triggerName))
-                {
-                    parameters[triggerName] = false;
-                }
+                string currentValue = parameters.ContainsKey(name) ? parameters[name].ToString() : "未设置";
+                Debug.Log($"StateMachine.SetTrigger: 设置触发器 {name}，当前值={currentValue}");
             }
+            #endif
             
-            // 清空触发器列表
-            _triggersToReset.Clear();
+            parameters[name] = true;
         }
 
-        // 添加重置特定触发器的方法
+        // 重置特定触发器
         public void ResetTrigger(string name)
         {
             if (parameters.ContainsKey(name) && parameters[name] is bool)
             {
+                #if UNITY_EDITOR
+                // 只在编辑器模式下，且只对跳跃相关的触发器输出日志
+                if (name.Contains("Jump") || name.Contains("Fall"))
+                {
+                    Debug.Log($"StateMachine.ResetTrigger: 重置触发器 {name}");
+                }
+                #endif
+                
                 parameters[name] = false;
             }
         }
 
-        // 切换状态（指定层）
-        public void ChangeState(int layer, IState newState)
-        {
-            // 检查新状态是否为空
-            if (newState == null)
-            {
-                Debug.LogWarning($"尝试将层 {layer} 切换到空状态");
-                
-                // 如果新状态为空，只退出当前状态，不进入新状态
-                if (layerStates.TryGetValue(layer, out var layerCurrentState) && layerCurrentState != null)
-                {
-                    layerCurrentState.OnExit();
-                    layerStates.Remove(layer); // 从层状态字典中移除该层
-                }
-                return;
-            }
-            
-            if (layerStates.TryGetValue(layer, out var currentLayerState))
-            {
-                if (currentLayerState != null)
-                {
-                    currentLayerState.OnExit();
-                }
-            }
-            
-            layerStates[layer] = newState;
-            newState.OnEnter();
-        }
-
-        // 切换主状态
+        // 切换状态
         public void ChangeState(IState newState)
         {
-            // 检查新状态是否为空
-            if (newState == null)
+            lock (stateLock)
             {
-                Debug.LogWarning("尝试将主状态切换到空状态");
-                return;
+                if (currentState != null)
+                {
+                    currentState.OnExit();
+                }
+                
+                currentState = newState;
+                
+                if (currentState != null)
+                {
+                    currentState.OnEnter();
+                }
             }
-            
-            if (currentState != null)
+        }
+        
+        // 切换层状态
+        public void ChangeState(int layer, IState newState)
+        {
+            lock (stateLock)
             {
-                currentState.OnExit();
+                if (layerStates.TryGetValue(layer, out IState oldState))
+                {
+                    if (oldState != null)
+                    {
+                        oldState.OnExit();
+                    }
+                }
+                
+                layerStates[layer] = newState;
+                
+                if (newState != null)
+                {
+                    newState.OnEnter();
+                }
             }
-            
-            currentState = newState;
-            newState.OnEnter();
         }
 
         private void SetParameter<T>(string name, T value)
@@ -413,6 +418,24 @@ namespace TrianCatStudio
                 {
                     if (transition.ConditionsMet(parameters))
                     {
+                        // 只输出跳跃相关状态的转换日志
+                        string fromState = currentState.GetType().Name;
+                        string toState = transition.To != null ? transition.To.GetType().Name : "null";
+                        if (fromState.Contains("Jump") || fromState.Contains("Fall") ||
+                            (toState != "null" && (toState.Contains("Jump") || toState.Contains("Fall"))))
+                        {
+                            Debug.Log($"CheckTransitions: 主状态转换 - 从 {fromState} 到 {toState}");
+                        }
+                        
+                        // 重置所有触发器类型的条件
+                        foreach (var condition in transition.Conditions)
+                        {
+                            if (condition.Type == ParameterType.Trigger)
+                            {
+                                ResetTrigger(condition.ParameterName);
+                            }
+                        }
+                        
                         // 如果目标状态为空，表示退出当前状态
                         if (transition.To == null)
                         {
@@ -439,6 +462,24 @@ namespace TrianCatStudio
                     {
                         if (transition.ConditionsMet(parameters))
                         {
+                            // 只输出跳跃相关状态的转换日志
+                            string fromState = layerState.GetType().Name;
+                            string toState = transition.To != null ? transition.To.GetType().Name : "null";
+                            if (fromState.Contains("Jump") || fromState.Contains("Fall") ||
+                                (toState != "null" && (toState.Contains("Jump") || toState.Contains("Fall"))))
+                            {
+                                Debug.Log($"CheckTransitions: 层 {layer} 状态转换 - 从 {fromState} 到 {toState}");
+                            }
+                            
+                            // 重置所有触发器类型的条件
+                            foreach (var condition in transition.Conditions)
+                            {
+                                if (condition.Type == ParameterType.Trigger)
+                                {
+                                    ResetTrigger(condition.ParameterName);
+                                }
+                            }
+                            
                             // 如果目标状态为空，表示退出当前层状态
                             if (transition.To == null)
                             {
@@ -459,34 +500,96 @@ namespace TrianCatStudio
 
         private void CheckGlobalTransitions(int layer)
         {
-            if (globalTransitions.TryGetValue(layer, out var validTransitions))
+            // 无全局转换规则，直接返回
+            if (!globalTransitions.ContainsKey(layer))
             {
-                foreach (var transition in validTransitions)
+                return;
+            }
+            
+            List<Transition> validTransitions = globalTransitions[layer];
+            IState currentLayerState = layer == -1 ? currentState : (layerStates.ContainsKey(layer) ? layerStates[layer] : null);
+            
+            if (validTransitions == null || validTransitions.Count == 0)
+            {
+                return;
+            }
+            
+            foreach (var transition in validTransitions)
+            {
+                if (transition.ConditionsMet(parameters))
                 {
-                    if (transition.ConditionsMet(parameters))
+                    // 避免状态自我转换
+                    if (transition.To != null && currentLayerState != null && 
+                        transition.To.GetType() == currentLayerState.GetType())
                     {
-                        // 全局转换的目标状态不应该为空，但为了安全起见，仍然进行检查
-                        if (transition.To != null)
+                        // 只输出跳跃相关状态的日志
+                        string stateName = currentLayerState.GetType().Name;
+                        if (stateName.Contains("Jump") || stateName.Contains("Fall"))
                         {
-                            if (layer == -1)
+                            Debug.Log($"CheckGlobalTransitions: 跳过到相同状态的转换 {stateName}");
+                        }
+                        
+                        // 重置触发器
+                        foreach (var condition in transition.Conditions)
+                        {
+                            if (condition.Type == ParameterType.Trigger)
                             {
-                                // 主状态的全局转换
-                                ChangeState(transition.To);
+                                ResetTrigger(condition.ParameterName);
                             }
-                            else
-                            {
-                                // 特定层的全局转换
-                                ChangeState(layer, transition.To);
-                            }
+                        }
+                        
+                        continue;
+                    }
+                    
+                    // 只输出跳跃相关状态的转换日志
+                    if (transition.To != null)
+                    {
+                        string toState = transition.To.GetType().Name;
+                        if (toState.Contains("Jump") || toState.Contains("Fall"))
+                        {
+                            Debug.Log($"CheckGlobalTransitions: 层 {layer} 全局转换到 {toState}");
+                        }
+                    }
+                    
+                    // 重置所有触发器类型的条件
+                    foreach (var condition in transition.Conditions)
+                    {
+                        if (condition.Type == ParameterType.Trigger)
+                        {
+                            ResetTrigger(condition.ParameterName);
+                        }
+                    }
+                    
+                    if (transition.To != null)
+                    {
+                        if (layer == -1)
+                        {
+                            ChangeState(transition.To);
                         }
                         else
                         {
-                            Debug.LogWarning($"全局转换的目标状态为空，层：{layer}");
+                            ChangeState(layer, transition.To);
                         }
-                        return;
                     }
+                    return;
                 }
             }
+        }
+
+        // 获取特定层的当前状态
+        public IState GetCurrentStateInLayer(int layer)
+        {
+            if (layer == -1)
+            {
+                return currentState;
+            }
+            
+            if (layerStates.TryGetValue(layer, out var state))
+            {
+                return state;
+            }
+            
+            return null;
         }
     }
 }

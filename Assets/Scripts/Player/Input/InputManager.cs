@@ -14,17 +14,18 @@ namespace TrianCatStudio
         public event Action OnJumpAction;
         public event Action OnDashAction;
         public event Action<bool> OnCrouchAction;
+        public event Action OnFireAction; // 单次开火事件
+        public event Action<bool> OnFireActionChanged; // 添加持续开火状态变化事件
 
         // 当前输入状态
         public Vector2 MoveInput { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsCrouching { get; private set; }
         public bool JumpTriggered { get; private set; }
-        public bool IsJumpHeld { get; private set; } // 跳跃键是否按住
         public bool IsJumpPressed { get; private set; } // 跳跃键是否刚按下
         public bool IsAiming { get; private set; }
         public bool IsDashPressed { get; private set; } // 冲刺键是否刚按下
-
+        public bool IsFirePressed { get; private set; } // 开火键是否按下（持续状态）
 
         private PlayerInput playerInput;
         private InputActionMap actionMap;
@@ -57,13 +58,9 @@ namespace TrianCatStudio
             {
                 JumpTriggered = true;
                 IsJumpPressed = true;
-                IsJumpHeld = true;
                 OnJumpAction?.Invoke();
-            };
-            
-            actionMap["Jump"].canceled += _ =>
-            {
-                IsJumpHeld = false;
+                
+                Debug.Log("Jump按键被按下：IsJumpPressed = true");
             };
 
             actionMap["Dash"].started += _ =>
@@ -83,6 +80,23 @@ namespace TrianCatStudio
                 IsAiming = false;
                 OnAimAction?.Invoke(false);
             };
+            
+            // 修改开火输入处理，支持持续开火
+            actionMap["Fire"].started += _ =>
+            {
+                IsFirePressed = true;
+                OnFireAction?.Invoke(); // 触发单次开火事件
+                OnFireActionChanged?.Invoke(true); // 触发开火状态变化事件
+                Debug.Log("Fire按键被按下：IsFirePressed = true");
+            };
+            
+            // 添加开火取消事件处理
+            actionMap["Fire"].canceled += _ =>
+            {
+                IsFirePressed = false;
+                OnFireActionChanged?.Invoke(false); // 触发开火状态变化事件
+                Debug.Log("Fire按键被释放：IsFirePressed = false");
+            };
         }
         
         private void LateUpdate()
@@ -91,6 +105,7 @@ namespace TrianCatStudio
             JumpTriggered = false;
             IsJumpPressed = false;
             IsDashPressed = false;
+            // 不再重置 IsFirePressed，它现在是持续状态
         }
 
         private void OnEnable()

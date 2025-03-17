@@ -51,11 +51,27 @@ namespace TrianCatStudio
         
         public override void HandleInput()
         {
-            // 硬着陆状态下不处理特殊输入
-            // 或者可以允许特定输入来打断恢复，如翻滚
-            if (manager.Player.InputManager.IsDashPressed && timer > recoveryTime * 0.5f)
+            // 允许在硬着陆状态下一定恢复时间后跳跃或翻滚
+            if (timer > recoveryTime * 0.3f) // 硬着陆需要更长的恢复时间才能跳跃
             {
-                manager.TriggerRoll();
+                // 检测跳跃输入
+                if (manager.Player.InputManager.IsJumpPressed)
+                {
+                    Debug.Log("HardLandingState.HandleInput: 检测到跳跃输入，打断硬着陆恢复");
+                    
+                    // 重置跳跃状态
+                    manager.Player.jumpCount = 0; // 确保从0开始计数
+                    manager.Player.HasDoubleJumped = false;
+                    
+                    // 触发跳跃
+                    manager.TriggerJump();
+                }
+                // 检测翻滚输入
+                else if (manager.Player.InputManager.IsDashPressed)
+                {
+                    Debug.Log("HardLandingState.HandleInput: 检测到翻滚输入，打断硬着陆恢复");
+                    manager.TriggerRoll();
+                }
             }
         }
         

@@ -48,7 +48,18 @@ namespace TrianCatStudio
         
         public override void HandleInput()
         {
-            // 着陆状态下不处理特殊输入
+            // 允许在着陆状态直接跳跃，打断着陆恢复
+            if (manager.Player.InputManager.IsJumpPressed && timer > 0.05f) // 添加少量延迟，避免连续跳跃
+            {
+                Debug.Log("LandingState.HandleInput: 检测到跳跃输入，打断着陆恢复");
+                
+                // 重置跳跃状态
+                manager.Player.jumpCount = 0; // 确保从0开始计数
+                manager.Player.HasDoubleJumped = false;
+                
+                // 触发跳跃
+                manager.TriggerJump();
+            }
         }
         
         public override void PhysicsUpdate(float deltaTime)

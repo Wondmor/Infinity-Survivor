@@ -20,10 +20,12 @@ namespace TrianCatStudio
         {
             Debug.Log("JumpState.OnEnter: 进入跳跃状态");
             
-            // 使用AnimController设置动画状态
+            // 确保重置Jump触发器，防止重复触发
+            manager.StateMachine.ResetTrigger("Jump");
+            
+            // 设置动画参数
             if (manager.Player.AnimController != null)
             {
-                manager.Player.AnimController.SetAnimationState(PlayerAnimController.AnimationState.Jump);
                 manager.Player.AnimController.TriggerJump();
             }
             else
@@ -47,16 +49,6 @@ namespace TrianCatStudio
         public override void OnExit()
         {
             Debug.Log("JumpState.OnExit: 退出跳跃状态");
-            
-            // 确保不会重复触发跳跃
-            if (manager.Player.AnimController != null)
-            {
-                manager.Player.AnimController.ResetJumpTrigger();
-            }
-            else
-            {
-                ResetAnimatorTrigger("Jump");
-            }
         }
         
         public override void Update(float deltaTime)
@@ -83,11 +75,8 @@ namespace TrianCatStudio
         
         public override void HandleInput()
         {
-            // 处理二段跳输入
-            if (manager.Player.InputManager.IsJumpPressed && CanDoubleJump())
-            {
-                manager.TriggerDoubleJump();
-            }
+            // 二段跳逻辑已移至PlayerStateManager中统一处理
+            // 这里不再需要处理二段跳输入
         }
         
         public override void PhysicsUpdate(float deltaTime)
@@ -95,7 +84,12 @@ namespace TrianCatStudio
             // 检测是否开始下落
             if (manager.Player.Rb.velocity.y < -0.1f)
             {
-                manager.TriggerFalling();
+                // 不再调用 TriggerFalling，因为我们已经删除了 FallingState
+                // 直接在动画控制器中触发下落动画
+                if (manager.Player.AnimController != null)
+                {
+                    manager.Player.AnimController.TriggerFall();
+                }
             }
             
             // 检测是否已经着陆

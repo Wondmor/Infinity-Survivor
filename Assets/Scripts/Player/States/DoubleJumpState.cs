@@ -16,6 +16,8 @@ namespace TrianCatStudio
 
         public override void OnEnter()
         {
+            Debug.Log("DoubleJumpState.OnEnter: 进入二段跳状态");
+            
             // 使用AnimController设置动画状态
             if (manager.Player.AnimController != null)
             {
@@ -30,6 +32,10 @@ namespace TrianCatStudio
             }
             
             jumpTimer = 0f;
+            
+            // 更新玩家状态
+            manager.Player.HasDoubleJumped = true;
+            manager.Player.jumpCount = 2;
             
             // 执行二段跳
             PerformDoubleJump();
@@ -61,7 +67,12 @@ namespace TrianCatStudio
             // 检测是否开始下落
             if (manager.Player.Rb.velocity.y < -0.1f)
             {
-                manager.TriggerFalling();
+                // 不再调用 TriggerFalling，因为我们已经删除了 FallingState
+                // 直接在动画控制器中触发下落动画
+                if (manager.Player.AnimController != null)
+                {
+                    manager.Player.AnimController.TriggerFall();
+                }
             }
             
             // 检测是否已经着陆
@@ -82,6 +93,8 @@ namespace TrianCatStudio
         // 执行二段跳
         private void PerformDoubleJump()
         {
+            Debug.Log($"DoubleJumpState.PerformDoubleJump: 开始执行二段跳 - HasDoubleJumped={manager.Player.HasDoubleJumped}, jumpCount={manager.Player.jumpCount}");
+            
             // 重置垂直速度
             manager.Player.Rb.velocity = new Vector3(
                 manager.Player.Rb.velocity.x,
@@ -93,10 +106,22 @@ namespace TrianCatStudio
             doubleJumpForce = manager.Player.GetJumpForce(); // 获取配置的二段跳力度
             manager.Player.Rb.AddForce(Vector3.up * doubleJumpForce, ForceMode.Impulse);
             
-            // 更新状态
-            manager.Player.HasDoubleJumped = true;
-            manager.Player.jumpCount = 2;
+            // 更新状态 - 这些状态应该已经在触发二段跳时设置，这里是确保
+            if (!manager.Player.HasDoubleJumped)
+            {
+                Debug.Log("DoubleJumpState.PerformDoubleJump: 设置HasDoubleJumped=true");
+                manager.Player.HasDoubleJumped = true;
+            }
+            
+            if (manager.Player.jumpCount != 2)
+            {
+                Debug.Log($"DoubleJumpState.PerformDoubleJump: 更新jumpCount从{manager.Player.jumpCount}到2");
+                manager.Player.jumpCount = 2;
+            }
+            
             manager.Player.lastJumpTime = Time.time;
+            
+            Debug.Log($"DoubleJumpState.PerformDoubleJump: 二段跳执行完成 - 速度设置为 {doubleJumpForce}");
         }
     }
 } 

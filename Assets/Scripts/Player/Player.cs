@@ -16,6 +16,16 @@ namespace TrianCatStudio
         [SerializeField] public Transform CameraPivot;
         [SerializeField] public PlayerAnimController AnimController; // 使用PlayerAnimController类型
 
+        // 子弹设置
+        [Header("Shooting Settings")]
+        [SerializeField] public GameObject BulletPrefab; // 子弹预制体
+        [SerializeField] public Transform FirePoint; // 发射点
+        [SerializeField] public float BulletSpeed = 20f; // 子弹速度
+        [SerializeField] public float BulletLifetime = 5f; // 子弹生命周期
+        [SerializeField] public float FireRate = 0.2f; // 射击频率
+        [SerializeField] public float BulletDamage = 10f; // 子弹基础伤害
+        private float lastFireTime; // 上次射击时间
+
         // 移动参数
         [Header("Movement Settings")]
         [SerializeField] private float walkSpeed = 3f;
@@ -43,17 +53,14 @@ namespace TrianCatStudio
         [SerializeField] private bool enableStairsHandling = true; // 启用楼梯处理
         [SerializeField] private float stepHeight = 0.3f;          // 最大台阶高度
         [SerializeField] private float stepSmoothing = 0.1f;       // 台阶平滑过渡时间
-        [SerializeField] private LayerMask stairsLayer = -1;       // 楼梯层级
 
         // 跳跃参数
         [Header("Jump Settings")]
         [SerializeField] private float jumpForce = 5f;
         [SerializeField] private float doubleJumpForce = 4f;
         [SerializeField] private float jumpCooldown = 0.1f;
-        [SerializeField] private float coyoteTime = 0.2f;
-        [SerializeField] private float jumpBufferTime = 0.2f;
+        [SerializeField] public float coyoteTime = 0.2f; // 修改为公共字段
         [SerializeField] private int maxJumpCount = 2;
-        [SerializeField] private float fallMultiplier = 2.5f; // 下落加速倍数
 
         // 下蹲和滑铲参数
         [Header("Crouch and Slide Settings")]
@@ -72,9 +79,7 @@ namespace TrianCatStudio
         public float lastJumpTime { get; set; }
         private float landingTime; // 落地时间
         private bool wasGrounded; // 上一帧是否在地面
-        public float jumpBufferCounter { get; set; }
         public int jumpCount { get; set; }
-        public bool isJumpRequested { get; set; }
         private float lastSlideTime; // 上次滑铲时间
         public bool IsCrouching { get; private set; } // 是否正在下蹲
         public bool IsSliding { get; private set; } // 是否正在滑铲
@@ -132,10 +137,22 @@ namespace TrianCatStudio
                     InputManager.OnJumpAction += HandleJumpInput;
                     InputManager.OnAimAction += HandleAimInput;
                     InputManager.OnCrouchAction += HandleCrouchInput;
+                    InputManager.OnFireAction += HandleFireInput; // 单次开火事件
+                    InputManager.OnFireActionChanged += HandleFireInputChanged; // 持续开火状态变化事件
                 }
                 else
                 {
                     Debug.LogError("Player.Awake: InputManager为空");
+                }
+                
+                // 初始化发射点
+                if (FirePoint == null)
+                {
+                    // 如果没有指定发射点，创建一个默认的发射点
+                    GameObject firePointObj = new GameObject("FirePoint");
+                    firePointObj.transform.SetParent(transform);
+                    firePointObj.transform.localPosition = new Vector3(0, 1.5f, 0.5f); // 设置在角色前方偏上的位置
+                    FirePoint = firePointObj.transform;
                 }
                 
                 Debug.Log("Player.Awake: 初始化完成");
@@ -158,27 +175,10 @@ namespace TrianCatStudio
             UpdateStateParameters();
             HandleGroundDetection();
             
-            // 打印当前状态
-            if (stateManager != null && stateManager.StateMachine != null)
+            // 更新瞄准方向
+            if (InputManager.IsAiming || InputManager.IsFirePressed)
             {
-                var currentState = stateManager.StateMachine.CurrentState;
-                var actionLayerState = stateManager.StateMachine.LayerStates.TryGetValue((int)StateLayerType.Action, out var state) ? state : null;
-                
-                Debug.Log($"当前状态: 主状态={currentState?.GetType().Name}, 动作层状态={actionLayerState?.GetType().Name}, " +
-                          $"IsGrounded={IsGrounded}, jumpCount={jumpCount}, HasDoubleJumped={HasDoubleJumped}");
-            }
-            
-            // 处理跳跃缓冲
-            if (jumpBufferCounter > 0)
-            {
-                jumpBufferCounter -= Time.deltaTime;
-                
-                // 如果在地面上且有跳跃缓冲，触发跳跃
-                if (IsGrounded && jumpBufferCounter > 0)
-                {
-                    stateManager.TriggerJump();
-                    jumpBufferCounter = 0;
-                }
+                UpdateAimDirection();
             }
         }
 
@@ -194,22 +194,19 @@ namespace TrianCatStudio
             InputManager.OnJumpAction -= HandleJumpInput;
             InputManager.OnAimAction -= HandleAimInput;
             InputManager.OnCrouchAction -= HandleCrouchInput;
+            InputManager.OnFireAction -= HandleFireInput; // 注销单次开火事件
+            InputManager.OnFireActionChanged -= HandleFireInputChanged; // 注销持续开火状态变化事件
         }
 
         #region 输入处理
         private void HandleJumpInput()
         {
-            Debug.Log($"HandleJumpInput: IsGrounded={IsGrounded}, jumpCount={jumpCount}, HasDoubleJumped={HasDoubleJumped}");
-            
             // 检查是否可以跳跃
             bool canJump = IsGrounded || Time.time - lastGroundedTime <= coyoteTime;
             bool canDoubleJump = CanDoubleJump();
             
             // 记录跳跃输入时间
             lastJumpTime = Time.time;
-            
-            // 设置跳跃缓冲区
-            jumpBufferCounter = jumpBufferTime;
             
             // 通知状态机处理跳跃
             if (canJump)
@@ -221,14 +218,24 @@ namespace TrianCatStudio
                 // 增加跳跃计数
                 jumpCount = 1;
                 
-                Debug.Log("触发一段跳");
+                Debug.Log("Player.HandleJumpInput: 触发一段跳");
                 stateManager.TriggerJump();
             }
             else if (canDoubleJump)
             {
                 // 在空中且已经跳过一次，执行二段跳
-                Debug.Log("触发二段跳");
-                PerformDoubleJump();
+                Debug.Log($"Player.HandleJumpInput: 触发二段跳 - jumpCount={jumpCount}, HasDoubleJumped={HasDoubleJumped}");
+                
+                // 立即更新状态，确保不会重复触发
+                HasDoubleJumped = true;
+                jumpCount = 2;
+                
+                // 触发二段跳
+                stateManager.TriggerDoubleJump();
+            }
+            else
+            {
+                Debug.Log($"Player.HandleJumpInput: 无法跳跃 - IsGrounded={IsGrounded}, jumpCount={jumpCount}, HasDoubleJumped={HasDoubleJumped}");
             }
         }
 
@@ -289,6 +296,41 @@ namespace TrianCatStudio
             
             Debug.Log("触发滑铲");
         }
+
+        private void HandleFireInput()
+        {
+            // 检查射击冷却
+            if (Time.time - lastFireTime < FireRate)
+            {
+                Debug.Log($"Player.HandleFireInput: 射击冷却中 - 剩余时间: {FireRate - (Time.time - lastFireTime):F2}秒");
+                return;
+            }
+            
+            // 更新上次射击时间
+            lastFireTime = Time.time;
+            
+            Debug.Log("Player.HandleFireInput: 触发射击");
+            
+            // 通知状态机处理射击
+            stateManager.TriggerFire();
+        }
+        
+        // 处理持续开火状态变化
+        private void HandleFireInputChanged(bool isFiring)
+        {
+            Debug.Log($"Player.HandleFireInputChanged: 开火状态变化 = {isFiring}");
+            
+            if (isFiring)
+            {
+                // 开始持续开火，首次触发由 HandleFireInput 处理
+                // 这里不需要额外处理
+            }
+            else
+            {
+                // 停止开火
+                stateManager.StopFiring();
+            }
+        }
         #endregion
 
         #region 状态更新
@@ -302,6 +344,12 @@ namespace TrianCatStudio
             // 标准化输入向量
             if (InputManager.MoveInput.magnitude > 0.1f)
                 MoveDirection.Normalize();
+            
+            // 将移动方向传递给动画控制器
+            if (AnimController != null && MoveDirection.magnitude > 0.1f)
+            {
+                AnimController.SetMoveDirection(MoveDirection);
+            }
         }
 
         private void UpdateStateParameters()
@@ -319,6 +367,32 @@ namespace TrianCatStudio
                 AnimController.SetMovementState(isMoving, isRunning, speed);
             }
         }
+        
+        // 更新瞄准方向
+        private void UpdateAimDirection()
+        {
+            if (AnimController == null || CameraPivot == null)
+                return;
+            
+            // 使用相机前方作为瞄准方向
+            Vector3 aimDirection = CameraPivot.forward;
+            
+            // 将瞄准方向传递给动画控制器
+            AnimController.SetAimDirection(aimDirection);
+            
+            // 当瞄准或开火时，直接让角色朝向瞄准方向
+            if (InputManager.IsAiming || InputManager.IsFirePressed)
+            {
+                // 获取水平方向（忽略Y轴）
+                Vector3 horizontalAimDirection = new Vector3(aimDirection.x, 0, aimDirection.z).normalized;
+                
+                // 直接设置角色朝向
+                if (horizontalAimDirection.magnitude > 0.1f)
+                {
+                    transform.rotation = Quaternion.LookRotation(horizontalAimDirection);
+                }
+            }
+        }
         #endregion
 
         #region 物理系统
@@ -327,7 +401,16 @@ namespace TrianCatStudio
             wasGrounded = IsGrounded;
             
             // 改进的地面检测方法，使用多点射线检测
-            IsGrounded = CheckGrounded();
+            bool groundDetected = CheckGrounded();
+            
+            // 如果刚刚跳跃，强制设置为非地面状态
+            if (Time.time - lastJumpTime < 0.1f && Rb.velocity.y > 0)
+            {
+                groundDetected = false;
+                Debug.Log("强制设置为非地面状态 - 刚刚跳跃");
+            }
+            
+            IsGrounded = groundDetected;
             
             // 更新着地时间
             if (IsGrounded)
@@ -375,12 +458,20 @@ namespace TrianCatStudio
             // 如果刚离开地面且垂直速度为负，触发下落状态
             if (!IsGrounded && wasGrounded && Rb.velocity.y < 0)
             {
-                stateManager.TriggerFalling();
+                // 不再调用 TriggerFalling，因为我们已经删除了 FallingState
+                // stateManager.TriggerFalling();
+                
                 // 使用AnimatorController触发下落动画
                 if (AnimController != null)
                 {
                     AnimController.TriggerFall();
                 }
+            }
+            
+            // 调试输出
+            if (IsGrounded != wasGrounded)
+            {
+                Debug.Log($"地面状态变化: {wasGrounded} -> {IsGrounded}, 垂直速度: {Rb.velocity.y}");
             }
         }
 
@@ -423,17 +514,26 @@ namespace TrianCatStudio
         // 多射线检测地面
         private bool CheckGroundedMultiRay()
         {
-            // 检测起点高度
-            float rayOriginHeight = 0.1f;
+            // 检测起点高度 - 增加高度以避免误判
+            float rayOriginHeight = 0.15f;
             Vector3 rayOrigin = transform.position + Vector3.up * rayOriginHeight;
+            
+            // 减小地面检测距离，使检测更精确
+            float effectiveGroundCheckDistance = groundCheckDistance * 0.8f;
             
             // 中心射线检测
             if (showDebugRays)
             {
-                Debug.DrawRay(rayOrigin, Vector3.down * groundCheckDistance, Color.green);
+                Debug.DrawRay(rayOrigin, Vector3.down * effectiveGroundCheckDistance, Color.green);
             }
             
-            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, groundCheckDistance, groundLayer))
+            // 如果垂直速度明显向上，直接认为不在地面上
+            if (Rb.velocity.y > 0.5f)
+            {
+                return false;
+            }
+            
+            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, effectiveGroundCheckDistance, groundLayer))
             {
                 // 计算角度，处理斜坡
                 float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
@@ -454,11 +554,11 @@ namespace TrianCatStudio
                 // 绘制调试射线
                 if (showDebugRays)
                 {
-                    Debug.DrawRay(rayStart, Vector3.down * groundCheckDistance, Color.red);
+                    Debug.DrawRay(rayStart, Vector3.down * effectiveGroundCheckDistance, Color.red);
                 }
                 
                 // 射线检测
-                if (Physics.Raycast(rayStart, Vector3.down, out hit, groundCheckDistance, groundLayer))
+                if (Physics.Raycast(rayStart, Vector3.down, out hit, effectiveGroundCheckDistance, groundLayer))
                 {
                     float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
                     if (slopeAngle < maxSlopeAngle) // 可配置的最大斜坡角度
@@ -573,7 +673,7 @@ namespace TrianCatStudio
             Velocity = Rb.velocity;
 
             // 处理旋转
-            if (MoveDirection.magnitude > 0.1f)
+            if (MoveDirection.magnitude > 0.1f && !(InputManager.IsAiming || InputManager.IsFirePressed))
             {
                 Quaternion targetRotation = Quaternion.LookRotation(MoveDirection);
                 
@@ -618,7 +718,8 @@ namespace TrianCatStudio
         // 检查是否可以二段跳
         private bool CanDoubleJump()
         {
-            return !IsGrounded && jumpCount == 1 && !HasDoubleJumped;
+            // 不再依赖IsGrounded属性，只检查跳跃计数和二段跳状态
+            return jumpCount == 1 && !HasDoubleJumped;
         }
 
         // 处理楼梯
@@ -791,43 +892,6 @@ namespace TrianCatStudio
                 Gizmos.DrawLine(point2, point3);
                 Gizmos.DrawLine(point3, point4);
                 Gizmos.DrawLine(point4, point1);
-            }
-        }
-
-        // 执行二段跳
-        private void PerformDoubleJump()
-        {
-            // 检查是否可以二段跳
-            if (!CanDoubleJump())
-            {
-                Debug.LogWarning("无法执行二段跳：条件不满足");
-                return;
-            }
-            
-            // 获取二段跳力度
-            float doubleJumpForce = GetJumpForce();
-            
-            // 直接设置垂直速度（而不是使用AddForce）
-            Rb.velocity = new Vector3(
-                Rb.velocity.x,
-                doubleJumpForce, // 直接设置垂直速度
-                Rb.velocity.z
-            );
-            
-            // 更新跳跃状态
-            HasDoubleJumped = true;
-            jumpCount = 2;
-            
-            // 记录跳跃时间
-            lastJumpTime = Time.time;
-            
-            Debug.Log($"执行二段跳: 速度设置为 {doubleJumpForce}");
-            
-            // 触发二段跳动画
-            if (AnimController != null)
-            {
-                AnimController.SetAnimationState(PlayerAnimController.AnimationState.DoubleJump);
-                AnimController.TriggerDoubleJump();
             }
         }
         #endregion

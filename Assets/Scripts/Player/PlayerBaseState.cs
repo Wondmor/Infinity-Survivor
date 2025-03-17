@@ -6,26 +6,26 @@ using UnityEngine;
 namespace TrianCatStudio
 {
     /// <summary>
-    /// ×´Ì¬²ãÀàĞÍÃ¶¾Ù
+    /// çŠ¶æ€å±‚ç±»å‹æšä¸¾
     /// </summary>
     public enum StateLayerType
     {
-        Base = 0,       // »ù´¡²ã£º´¦Àí»ù±¾ÒÆ¶¯£¨×ß¡¢ÅÜ¡¢Õ¾Á¢£©
-        Action = 1,     // ¶¯×÷²ã£º´¦ÀíÌøÔ¾¡¢¶ş¶ÎÌø¡¢ÏÂÂä¡¢×ÅÂ½µÈ
-        UpperBody = 2,  // ÉÏ°ëÉí²ã£º´¦ÀíÃé×¼¡¢ÎäÆ÷²Ù×÷µÈ
-        Additive = 3    // ¸½¼Ó²ã£º´¦ÀíÇãĞ±¡¢Í·²¿Ğı×ªµÈ
+        Base = 0,       // åŸºç¡€å±‚ï¼šæ§åˆ¶åŸºæœ¬ç§»åŠ¨ï¼ˆèµ°ã€è·‘ã€ç«™ç«‹ï¼‰
+        Action = 1,     // åŠ¨ä½œå±‚ï¼šæ§åˆ¶è·³è·ƒã€ä¸‹è½ã€ç¿»æ»šã€ç€é™†ç­‰
+        UpperBody = 2,  // ä¸ŠåŠèº«å±‚ï¼šæ§åˆ¶ç„å‡†ã€æ”»å‡»ã€äº¤äº’ç­‰
+        Additive = 3    // é™„åŠ å±‚ï¼šæ§åˆ¶å€¾æ–œã€å¤´éƒ¨æ—‹è½¬ç­‰
     }
 
     public abstract class PlayerBaseState : IState
     {
-        // ¹«¹²ÊôĞÔ
+        // åŸºæœ¬å±æ€§
         public int StateLayer { get; protected set; } = (int)StateLayerType.Base;
         public virtual bool CanBeInterrupted => true;
 
-        // ×é¼şÒıÓÃ
+        // ç®¡ç†å™¨å¼•ç”¨
         protected readonly PlayerStateManager manager;
         
-        // ¶¯»­»º´æ
+        // åŠ¨ç”»ç¼“å­˜
         private static Dictionary<string, bool> animationExistsCache = new Dictionary<string, bool>();
 
         protected PlayerBaseState(PlayerStateManager manager)
@@ -35,37 +35,37 @@ namespace TrianCatStudio
 
         public virtual void OnEnter()
         {
-            // ×ÓÀàÊµÏÖ¾ßÌåÂß¼­
+            // ç”±å­ç±»å®é™…å®ç°é€»è¾‘
         }
 
         public virtual void OnExit()
         {
-            // ×ÓÀàÊµÏÖ¾ßÌåÂß¼­
+            // ç”±å­ç±»å®é™…å®ç°é€»è¾‘
         }
 
         public virtual void Update(float deltaTime)
         {
-            // ×ÓÀàÊµÏÖ¾ßÌåÂß¼­
+            // ç”±å­ç±»å®é™…å®ç°é€»è¾‘
         }
 
         /// <summary>
-        /// ´¦ÀíÊäÈë£¬ÓÉ×ÓÀàÊµÏÖ
+        /// å¤„ç†è¾“å…¥ï¼Œç”±å­ç±»å®ç°
         /// </summary>
         public virtual void HandleInput()
         {
-            // ×ÓÀàÊµÏÖ¾ßÌåÂß¼­
+            // ç”±å­ç±»å®é™…å®ç°é€»è¾‘
         }
 
         /// <summary>
-        /// ´¦ÀíÎïÀí¸üĞÂ£¬ÓÉ×ÓÀàÊµÏÖ
+        /// å¤„ç†ç‰©ç†æ›´æ–°ï¼Œç”±å­ç±»å®ç°
         /// </summary>
         public virtual void PhysicsUpdate(float deltaTime)
         {
-            // ×ÓÀàÊµÏÖ¾ßÌåÂß¼­
+            // ç”±å­ç±»å®é™…å®ç°é€»è¾‘
         }
 
         /// <summary>
-        /// ÉèÖÃ¶¯»­×´Ì¬£¬Í¨¹ıÉèÖÃAnimator²ÎÊıÀ´¿ØÖÆ¶¯»­×´Ì¬»ú
+        /// è®¾ç½®åŠ¨ç”»çŠ¶æ€ï¼Œé€šè¿‡è°ƒç”¨Animatoræ§åˆ¶å™¨æ¥æ§åˆ¶åŠ¨ç”»çŠ¶æ€æœº
         /// </summary>
         protected void SetAnimationState(string stateName)
         {
@@ -74,7 +74,7 @@ namespace TrianCatStudio
         }
         
         /// <summary>
-        /// ÉèÖÃ¶¯»­²ÎÊı£¬´øÓĞ¿ÕÒıÓÃ±£»¤
+        /// è®¾ç½®åŠ¨ç”»æ§åˆ¶å™¨ä¸­å¯æ§åˆ¶çš„å˜é‡
         /// </summary>
         protected void SetAnimatorFloat(string paramName, float value)
         {
@@ -83,7 +83,7 @@ namespace TrianCatStudio
         }
         
         /// <summary>
-        /// ÉèÖÃ¶¯»­²ÎÊı£¬´øÓĞ¿ÕÒıÓÃ±£»¤
+        /// è®¾ç½®åŠ¨ç”»æ§åˆ¶å™¨ä¸­å¯æ§åˆ¶çš„å˜é‡
         /// </summary>
         protected void SetAnimatorBool(string paramName, bool value)
         {
@@ -92,33 +92,23 @@ namespace TrianCatStudio
         }
         
         /// <summary>
-        /// ÉèÖÃ¶¯»­²ÎÊı£¬´øÓĞ¿ÕÒıÓÃ±£»¤
+        /// è®¾ç½®åŠ¨ç”»æ§åˆ¶å™¨ä¸­å¯æ§åˆ¶çš„å˜é‡
         /// </summary>
         protected void SetAnimatorTrigger(string name)
         {
             if (manager.Player.Animator != null)
             {
-                manager.Player.Animator.ResetTrigger(name);
                 manager.Player.Animator.SetTrigger(name);
             }
         }
         
         /// <summary>
-        /// ÉèÖÃ¶¯»­²ÎÊı£¬´øÓĞ¿ÕÒıÓÃ±£»¤
+        /// è®¾ç½®åŠ¨ç”»æ§åˆ¶å™¨ä¸­å¯æ§åˆ¶çš„å˜é‡
         /// </summary>
         protected void SetAnimatorInteger(string paramName, int value)
         {
             if (manager.Player?.Animator == null) return;
             manager.Player.Animator.SetInteger(paramName, value);
-        }
-
-        // ÖØÖÃAnimator´¥·¢Æ÷
-        protected void ResetAnimatorTrigger(string name)
-        {
-            if (manager.Player.Animator != null)
-            {
-                manager.Player.Animator.ResetTrigger(name);
-            }
         }
     }
 }
