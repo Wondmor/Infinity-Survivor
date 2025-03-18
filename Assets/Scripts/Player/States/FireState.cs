@@ -150,58 +150,80 @@ namespace TrianCatStudio
                 Debug.LogWarning("FireState.SpawnBullet: 相机为空，使用玩家前方作为射击方向");
             }
             
-            // 生成子弹
-            GameObject bullet = Object.Instantiate(
+            // 从对象池获取子弹
+            GameObject bullet = ObjectPoolManager.Instance.Get(
                 manager.Player.BulletPrefab, 
                 firePoint.position, 
                 Quaternion.LookRotation(fireDirection)
             );
             
-            // 设置子弹速度和发射者
-            PlayerBullet playerBullet = bullet.GetComponent<PlayerBullet>();
-            if (playerBullet != null)
+            if (bullet != null)
             {
-                // 使用带发射者参数的初始化方法
-                playerBullet.Initialize(fireDirection, manager.Player.BulletSpeed, manager.Player.gameObject);
-                // 设置伤害
-                playerBullet.SetDamage(manager.Player.BulletDamage, DamageType.Physical);
-                Debug.Log($"FireState.SpawnBullet: 生成玩家子弹，方向={fireDirection}, 速度={manager.Player.BulletSpeed}, 发射者={manager.Player.gameObject.name}");
-                
-                // 可以在这里设置玩家子弹的特殊属性，例如穿透
-                // playerBullet.SetPierceProperties(true, 2, 0.2f);
-            }
-            else
-            {
-                // 尝试获取基类BulletBase
-                BulletBase bulletBase = bullet.GetComponent<BulletBase>();
-                if (bulletBase != null)
+                // 尝试获取PooledPlayerBullet组件
+                PooledPlayerBullet pooledPlayerBullet = bullet.GetComponent<PooledPlayerBullet>();
+                if (pooledPlayerBullet != null)
                 {
-                    bulletBase.Initialize(fireDirection, manager.Player.BulletSpeed, manager.Player.gameObject);
+                    // 初始化子弹
+                    pooledPlayerBullet.Initialize(fireDirection, manager.Player.BulletSpeed, manager.Player.gameObject);
                     // 设置伤害
-                    bulletBase.SetDamage(manager.Player.BulletDamage, DamageType.Physical);
-                    Debug.Log($"FireState.SpawnBullet: 生成基础子弹，方向={fireDirection}, 速度={manager.Player.BulletSpeed}, 发射者={manager.Player.gameObject.name}");
+                    pooledPlayerBullet.SetDamage(manager.Player.BulletDamage, DamageType.Physical);
+                    
+                    // 可以在这里设置玩家子弹的特殊属性，例如穿透
+                    // pooledPlayerBullet.SetPierceProperties(true, 2, 0.2f);
+                    
+                    Debug.Log($"FireState.SpawnBullet: 生成池化玩家子弹，方向={fireDirection}, 速度={manager.Player.BulletSpeed}, 发射者={manager.Player.gameObject.name}");
                 }
                 else
                 {
-                    // 移除对旧Bullet类的引用，直接使用Rigidbody
-                    Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
-                    if (bulletRb != null)
+                    // 尝试获取基类BulletBase
+                    PooledBulletBase pooledBulletBase = bullet.GetComponent<PooledBulletBase>();
+                    if (pooledBulletBase != null)
                     {
-                        bulletRb.velocity = fireDirection * manager.Player.BulletSpeed;
-                        Debug.Log($"FireState.SpawnBullet: 生成子弹（使用Rigidbody），方向={fireDirection}, 速度={manager.Player.BulletSpeed}");
+                        pooledBulletBase.Initialize(fireDirection, manager.Player.BulletSpeed, manager.Player.gameObject);
+                        // 设置伤害
+                        pooledBulletBase.SetDamage(manager.Player.BulletDamage, DamageType.Physical);
+                        Debug.Log($"FireState.SpawnBullet: 生成池化基础子弹，方向={fireDirection}, 速度={manager.Player.BulletSpeed}, 发射者={manager.Player.gameObject.name}");
                     }
                     else
                     {
-                        Debug.LogWarning("FireState.SpawnBullet: 子弹没有任何可用的组件");
+                        // 尝试获取普通BulletBase（如果没有池化版本）
+                        BulletBase bulletBase = bullet.GetComponent<BulletBase>();
+                        if (bulletBase != null)
+                        {
+                            bulletBase.Initialize(fireDirection, manager.Player.BulletSpeed, manager.Player.gameObject);
+                            // 设置伤害
+                            bulletBase.SetDamage(manager.Player.BulletDamage, DamageType.Physical);
+                            Debug.Log($"FireState.SpawnBullet: 生成基础子弹，方向={fireDirection}, 速度={manager.Player.BulletSpeed}, 发射者={manager.Player.gameObject.name}");
+                        }
+                        else
+                        {
+                            // 最后尝试使用Rigidbody
+                            Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
+                            if (bulletRb != null)
+                            {
+                                bulletRb.velocity = fireDirection * manager.Player.BulletSpeed;
+                                Debug.Log($"FireState.SpawnBullet: 生成子弹（使用Rigidbody），方向={fireDirection}, 速度={manager.Player.BulletSpeed}");
+                                
+                                // 对于没有PooledObject组件的子弹，设置自动销毁
+                                if (manager.Player.BulletLifetime > 0)
+                                {
+                                    Object.Destroy(bullet, manager.Player.BulletLifetime);
+                                }
+                            }
+                            else
+                            {
+                                Debug.LogWarning("FireState.SpawnBullet: 子弹没有任何可用的组件");
+                            }
+                        }
                     }
                 }
             }
-            
-            // 销毁子弹（如果没有其他脚本控制）
-            if (manager.Player.BulletLifetime > 0)
+            else
             {
-                Object.Destroy(bullet, manager.Player.BulletLifetime);
+                Debug.LogError("FireState.SpawnBullet: 无法从对象池获取子弹");
             }
+            
+            // 注意：不再需要手动销毁子弹，池化子弹会自动回收
         }
     }
 } 
