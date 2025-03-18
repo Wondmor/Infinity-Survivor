@@ -14,6 +14,6 @@ public class StartGamePoint : MonoBehaviour
         };
 
         // 触发场景切换
-        SceneManager.Instance.SwitchScene<HomeSceneState>(parameters);
+        SceneController.Instance.LoadHomeScene();
     }
 }

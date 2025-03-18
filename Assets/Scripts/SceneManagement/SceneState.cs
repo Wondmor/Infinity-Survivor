@@ -11,7 +11,7 @@ namespace TrianCatStudio
 
         public virtual void OnEnter()
         {
-            SceneManager.Instance.StartCoroutine(LoadSceneRoutine());
+            SceneController.Instance.StartCoroutine(LoadSceneRoutine());
         }
 
         private IEnumerator LoadSceneRoutine()

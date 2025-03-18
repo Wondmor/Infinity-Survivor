@@ -80,6 +80,7 @@ namespace TrianCatStudio
         private float landingTime; // 落地时间
         private bool wasGrounded; // 上一帧是否在地面
         public int jumpCount { get; set; }
+        public bool isJumpRequested { get; set; }
         private float lastSlideTime; // 上次滑铲时间
         public bool IsCrouching { get; private set; } // 是否正在下蹲
         public bool IsSliding { get; private set; } // 是否正在滑铲
