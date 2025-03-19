@@ -99,24 +99,6 @@ namespace TrianCatStudio
     }
     
     /// <summary>
-    /// 掉落物品数据
-    /// </summary>
-    [Serializable]
-    public class DropItem
-    {
-        public string itemId;
-        public float dropChance; // 掉落概率 (0-1)
-        public int minQuantity = 1;
-        public int maxQuantity = 1;
-        
-        // 稀有度权重（用于分层随机）
-        public float commonWeight = 1f;
-        public float uncommonWeight = 0.3f;
-        public float rareWeight = 0.1f;
-        public float epicWeight = 0.01f;
-    }
-    
-    /// <summary>
     /// 敌人数据集合（用于JSON反序列化）
     /// </summary>
     [Serializable]

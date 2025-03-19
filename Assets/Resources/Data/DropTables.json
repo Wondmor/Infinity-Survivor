@@ -1,0 +1,238 @@
+{
+  "dropTables": [
+    {
+      "tableId": "drop_common",
+      "tableName": "普通怪物掉落",
+      "description": "常见敌人的掉落表",
+      "isEnabled": true,
+      "dropMethod": 2,
+      "minDropCount": 1,
+      "maxDropCount": 2,
+      "dropChance": 0.8,
+      "dropGroups": [
+        {
+          "groupId": "group_consumables",
+          "groupName": "消耗品",
+          "groupWeight": 3.0,
+          "groupDropChance": 0.8,
+          "groupDropMethod": 1,
+          "minGroupDrops": 1,
+          "maxGroupDrops": 1,
+          "entries": [
+            {
+              "itemId": "health_potion",
+              "weight": 5.0,
+              "minCount": 1,
+              "maxCount": 2,
+              "dropChance": 0.6,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            },
+            {
+              "itemId": "mana_potion",
+              "weight": 3.0,
+              "minCount": 1,
+              "maxCount": 1,
+              "dropChance": 0.4,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            }
+          ]
+        },
+        {
+          "groupId": "group_materials",
+          "groupName": "材料",
+          "groupWeight": 2.0,
+          "groupDropChance": 0.5,
+          "groupDropMethod": 1,
+          "minGroupDrops": 1,
+          "maxGroupDrops": 1,
+          "entries": [
+            {
+              "itemId": "wood",
+              "weight": 3.0,
+              "minCount": 1,
+              "maxCount": 3,
+              "dropChance": 0.7,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            },
+            {
+              "itemId": "stone",
+              "weight": 2.0,
+              "minCount": 1,
+              "maxCount": 2,
+              "dropChance": 0.5,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tableId": "drop_elite",
+      "tableName": "精英怪物掉落",
+      "description": "精英敌人的掉落表",
+      "isEnabled": true,
+      "dropMethod": 2,
+      "minDropCount": 2,
+      "maxDropCount": 3,
+      "dropChance": 1.0,
+      "dropGroups": [
+        {
+          "groupId": "group_consumables_elite",
+          "groupName": "高级消耗品",
+          "groupWeight": 1.0,
+          "groupDropChance": 1.0,
+          "groupDropMethod": 1,
+          "minGroupDrops": 1,
+          "maxGroupDrops": 1,
+          "entries": [
+            {
+              "itemId": "health_potion",
+              "weight": 2.0,
+              "minCount": 2,
+              "maxCount": 3,
+              "dropChance": 0.8,
+              "isFixed": true,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            },
+            {
+              "itemId": "mana_potion",
+              "weight": 2.0,
+              "minCount": 1,
+              "maxCount": 2,
+              "dropChance": 0.6,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            }
+          ]
+        },
+        {
+          "groupId": "group_equipment",
+          "groupName": "装备",
+          "groupWeight": 1.0,
+          "groupDropChance": 0.5,
+          "groupDropMethod": 1,
+          "minGroupDrops": 1,
+          "maxGroupDrops": 1,
+          "entries": [
+            {
+              "itemId": "sword",
+              "weight": 1.0,
+              "minCount": 1,
+              "maxCount": 1,
+              "dropChance": 0.3,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 2,
+              "minGameTime": 300
+            },
+            {
+              "itemId": "shield",
+              "weight": 1.0,
+              "minCount": 1,
+              "maxCount": 1,
+              "dropChance": 0.3,
+              "isFixed": false,
+              "isUnique": false,
+              "minPlayerLevel": 2,
+              "minGameTime": 300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tableId": "drop_boss",
+      "tableName": "Boss掉落",
+      "description": "Boss敌人的掉落表",
+      "isEnabled": true,
+      "dropMethod": 3,
+      "minDropCount": 3,
+      "maxDropCount": 5,
+      "dropChance": 1.0,
+      "dropGroups": [
+        {
+          "groupId": "group_guaranteed",
+          "groupName": "保底掉落",
+          "groupWeight": 1.0,
+          "groupDropChance": 1.0,
+          "groupDropMethod": 3,
+          "minGroupDrops": 2,
+          "maxGroupDrops": 2,
+          "entries": [
+            {
+              "itemId": "health_potion",
+              "weight": 1.0,
+              "minCount": 3,
+              "maxCount": 5,
+              "dropChance": 1.0,
+              "isFixed": true,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            },
+            {
+              "itemId": "mana_potion",
+              "weight": 1.0,
+              "minCount": 2,
+              "maxCount": 4,
+              "dropChance": 1.0,
+              "isFixed": true,
+              "isUnique": false,
+              "minPlayerLevel": 1,
+              "minGameTime": 0
+            }
+          ]
+        },
+        {
+          "groupId": "group_rare_equipment",
+          "groupName": "稀有装备",
+          "groupWeight": 1.0,
+          "groupDropChance": 0.8,
+          "groupDropMethod": 1,
+          "minGroupDrops": 1,
+          "maxGroupDrops": 1,
+          "entries": [
+            {
+              "itemId": "rare_sword",
+              "weight": 1.0,
+              "minCount": 1,
+              "maxCount": 1,
+              "dropChance": 0.5,
+              "isFixed": false,
+              "isUnique": true,
+              "minPlayerLevel": 5,
+              "minGameTime": 600
+            },
+            {
+              "itemId": "rare_shield",
+              "weight": 1.0,
+              "minCount": 1,
+              "maxCount": 1,
+              "dropChance": 0.5,
+              "isFixed": false,
+              "isUnique": true,
+              "minPlayerLevel": 5,
+              "minGameTime": 600
+            }
+          ]
+        }
+      ]
+    }
+  ]
+} 

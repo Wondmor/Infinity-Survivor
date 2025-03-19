@@ -305,28 +305,15 @@ namespace TrianCatStudio
         /// </summary>
         private void SpawnDrops(Enemy enemy)
         {
-            // 获取敌人数据
-            EnemyData enemyData = enemy.EnemyData;
-            if (enemyData == null || enemyData.drops == null || enemyData.drops.Count == 0)
+            if (enemy == null)
                 return;
                 
-            // 处理掉落（实际项目中应该用更复杂的掉落系统）
-            foreach (var drop in enemyData.drops)
-            {
-                // 根据概率决定是否掉落
-                if (Random.value <= drop.dropChance)
-                {
-                    // 确定掉落数量
-                    int quantity = Random.Range(drop.minQuantity, drop.maxQuantity + 1);
-                    
-                    // 生成掉落物品
-                    // 这里应该调用物品管理器的接口
-                    Debug.Log($"[EnemyManager] 敌人 {enemy.name} 掉落物品 {drop.itemId} x{quantity}");
-                    
-                    // TODO: 调用物品管理器实际生成物品
-                    // ItemManager.Instance.SpawnItem(drop.itemId, quantity, enemy.transform.position);
-                }
-            }
+            // 使用DropController生成掉落物品
+            DropController.Instance.GenerateDropsForEnemy(
+                enemy.EnemyId, 
+                enemy.transform.position, 
+                1  // 使用默认等级1，因为Enemy类没有Level属性
+            );
         }
         
         /// <summary>

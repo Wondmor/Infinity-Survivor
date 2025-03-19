@@ -1,0 +1,36 @@
+{
+  "mappings": [
+    {
+      "enemyId": "zombie_basic",
+      "dropTableId": "drop_common"
+    },
+    {
+      "enemyId": "zombie_fast",
+      "dropTableId": "drop_common"
+    },
+    {
+      "enemyId": "zombie_tank",
+      "dropTableId": "drop_elite"
+    },
+    {
+      "enemyId": "skeleton_archer",
+      "dropTableId": "drop_common"
+    },
+    {
+      "enemyId": "skeleton_warrior",
+      "dropTableId": "drop_common"
+    },
+    {
+      "enemyId": "skeleton_mage",
+      "dropTableId": "drop_elite"
+    },
+    {
+      "enemyId": "boss_skeleton_king",
+      "dropTableId": "drop_boss"
+    },
+    {
+      "enemyId": "boss_zombie_giant",
+      "dropTableId": "drop_boss"
+    }
+  ]
+} 
