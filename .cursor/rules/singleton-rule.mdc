@@ -1,0 +1,12 @@
+---
+description: 单例模式基类要求
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+需要使用非Mono单例模式的，继承@BaseManager.cs（可以多重继承）
+需要使用Mono单例模式的，继承@SingletonAutoMono.cs（可以多重继承），这个单例可以直接访问Instance，会自动创建物体并挂载
