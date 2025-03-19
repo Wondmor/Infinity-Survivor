@@ -416,7 +416,22 @@ namespace TrianCatStudio
             
             // 检查障碍物
             Vector3 eyePosition = transform.position + Vector3.up * eyeHeight;
-            Vector3 targetCenter = target.position + Vector3.up * (target.GetComponent<CharacterController>()?.height * 0.5f ?? 1f);
+            
+            // 使用Collider或者固定偏移来计算目标中心点
+            Vector3 targetCenter;
+            
+            // 尝试获取碰撞器来确定高度
+            Collider targetCollider = target.GetComponent<Collider>();
+            if (targetCollider != null)
+            {
+                // 使用碰撞器的中心点
+                targetCenter = targetCollider.bounds.center;
+            }
+            else
+            {
+                // 使用固定偏移量（假设大多数角色高度约为2单位）
+                targetCenter = target.position + Vector3.up * 1f;
+            }
             
             // 从眼睛位置到目标中心发射射线
             Ray ray = new Ray(eyePosition, targetCenter - eyePosition);

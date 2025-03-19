@@ -146,6 +146,12 @@ namespace TrianCatStudio
             
             // 更新危险区域
             UpdateDangerZones();
+            
+            // 检测并避开墙壁
+            if (navAgent.velocity.sqrMagnitude > 0.1f)
+            {
+                AvoidWalls();
+            }
         }
         
         /// <summary>

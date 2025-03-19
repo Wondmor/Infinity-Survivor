@@ -39,6 +39,16 @@ namespace TrianCatStudio
             stateManager = GetComponent<EnemyStateManager>();
             perception = GetComponent<EnemyPerception>();
             pathfinding = GetComponent<EnemyPathfinding>();
+            
+            // 设置感知系统的警戒状态监听
+            if (perception != null)
+            {
+                // 当检测到目标时设置为警戒状态
+                perception.OnTargetDetected += (target) => perception.SetAlertState(true);
+                
+                // 当丢失目标后延迟取消警戒状态
+                perception.OnTargetLost += (target) => StartCoroutine(DelayedAlertStateReset());
+            }
         }
         
         private void OnEnable()
@@ -498,5 +508,18 @@ namespace TrianCatStudio
         }
         
         #endregion
+        
+        // 延迟重置警戒状态的协程
+        private System.Collections.IEnumerator DelayedAlertStateReset()
+        {
+            // 等待一段时间再取消警戒状态
+            yield return new WaitForSeconds(targetLostMemoryTime);
+            
+            // 如果目标仍然不可见，取消警戒状态
+            if (!perception.IsTargetVisible)
+            {
+                perception.SetAlertState(false);
+            }
+        }
     }
 } 
