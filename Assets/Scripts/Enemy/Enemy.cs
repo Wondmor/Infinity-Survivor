@@ -7,7 +7,12 @@ namespace TrianCatStudio
     /// <summary>
     /// 敌人类 - 挂载在敌人游戏对象上，用于管理组件和连接EnemyController
     /// </summary>
-    [RequireComponent(typeof(NavMeshAgent), typeof(Animator), typeof(Collider))]
+    [RequireComponent(typeof(NavMeshAgent))]
+    [RequireComponent(typeof(Animator))]
+    [RequireComponent(typeof(Collider))]
+    [RequireComponent(typeof(EnemyPerception))]
+    [RequireComponent(typeof(EnemyPathfinding))]
+    [RequireComponent(typeof(EnemyStateManager))]
     public class Enemy : Entity, IPoolable
     {
         [Header("基本设置")]
