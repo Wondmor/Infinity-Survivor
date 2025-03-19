@@ -57,9 +57,9 @@ namespace TrianCatStudio
         public int ActiveEnemyCount => activeEnemies.Count;
         
         // JSON配置路径
-        private const string SPAWN_RULES_PATH = "Data/SpawnRules";
-        private const string SPAWN_WAVES_PATH = "Data/SpawnWaves";
-        private const string SPAWN_TRIGGERS_PATH = "Data/SpawnTriggers";
+        public const string SPAWN_RULES_PATH = "Data/SpawnRules";
+        public const string SPAWN_WAVES_PATH = "Data/SpawnWaves";
+        public const string SPAWN_TRIGGERS_PATH = "Data/SpawnTriggers";
         
         /// <summary>
         /// 触发器数据类（用于JSON反序列化）
@@ -86,7 +86,7 @@ namespace TrianCatStudio
         /// 刷怪规则JSON容器
         /// </summary>
         [Serializable]
-        private class SpawnRulesContainer
+        public class SpawnRulesContainer
         {
             public List<SpawnRule> spawnRules = new List<SpawnRule>();
         }
@@ -95,7 +95,7 @@ namespace TrianCatStudio
         /// 刷怪波次JSON容器
         /// </summary>
         [Serializable]
-        private class SpawnWavesContainer
+        public class SpawnWavesContainer
         {
             public List<SpawnWave> spawnWaves = new List<SpawnWave>();
         }
@@ -104,7 +104,7 @@ namespace TrianCatStudio
         /// 刷怪触发器JSON容器
         /// </summary>
         [Serializable]
-        private class SpawnTriggersContainer
+        public class SpawnTriggersContainer
         {
             public List<SpawnTriggerData> spawnTriggers = new List<SpawnTriggerData>();
         }
@@ -130,7 +130,7 @@ namespace TrianCatStudio
         /// <summary>
         /// 加载所有配置
         /// </summary>
-        private void LoadAllConfigurations()
+        public void LoadAllConfigurations()
         {
             LoadSpawnRules();
             LoadSpawnWaves();
@@ -270,6 +270,17 @@ namespace TrianCatStudio
                 typeof(SpawnTrigger).GetField("triggerId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.triggerId);
                 typeof(SpawnTrigger).GetField("waveIds", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.waveIds.ToArray());
                 typeof(SpawnTrigger).GetField("triggerAllWaves", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.triggerAllWaves);
+            }
+        }
+        
+        /// <summary>
+        /// 添加触发器数据
+        /// </summary>
+        public void AddTriggerData(SpawnTriggerData triggerData)
+        {
+            if (triggerData != null && !string.IsNullOrEmpty(triggerData.triggerId))
+            {
+                spawnTriggers[triggerData.triggerId] = triggerData;
             }
         }
         

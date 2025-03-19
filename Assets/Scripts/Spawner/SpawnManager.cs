@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace TrianCatStudio
 {
@@ -20,10 +21,20 @@ namespace TrianCatStudio
         [SerializeField] private float updateInterval = 0.5f;  // 更新间隔
         [SerializeField] private int maxConcurrentEnemies = 50; // 最大同时存在敌人数量
         
+        [Header("分帧加载设置")]
+        [SerializeField] private bool useFrameLoading = true;  // 是否使用分帧加载
+        [SerializeField] private int objectsPerFrame = 10;     // 每帧创建对象数量
+        [SerializeField] private float frameLoadingInterval = 0.02f; // 分帧加载间隔
+        
         // 内部状态
         private bool isActive = false;
         private float gameTime = 0f;
         private float lastUpdateTime = 0f;
+        private bool isInitializing = false;
+        private bool configurationLoaded = false;
+        
+        // 加载进度
+        private float loadingProgress = 0f;
         
         // 玩家参考
         private Player player;
@@ -32,10 +43,17 @@ namespace TrianCatStudio
         public delegate void SpawnEvent(int enemyCount);
         public event SpawnEvent OnEnemyCountChanged;
         
+        public delegate void LoadingEvent(float progress);
+        public event LoadingEvent OnLoadingProgressChanged;
+        
+        // 加载状态属性
+        public bool IsLoading => isInitializing;
+        public float LoadingProgress => loadingProgress;
+        
         private void Start()
         {
             // 初始化
-            Initialize();
+            StartCoroutine(InitializeAsync());
             
             // 自动激活
             if (activateOnStart)
@@ -44,9 +62,15 @@ namespace TrianCatStudio
             }
         }
         
-        private void Initialize()
+        /// <summary>
+        /// 异步初始化
+        /// </summary>
+        private IEnumerator InitializeAsync()
         {
-            // 确保刷怪控制器已初始化
+            isInitializing = true;
+            loadingProgress = 0f;
+            
+            // 确保刷怪控制器已创建
             SpawnController controller = SpawnController.Instance;
             
             // 获取玩家引用
@@ -59,7 +83,7 @@ namespace TrianCatStudio
                 if (player != null)
                 {
                     // 这里我们假设Player没有LevelUp事件，改为直接获取Level并设置
-                    SpawnController.Instance.SetPlayerLevel(1); // 设置默认等级为1
+                    controller.SetPlayerLevel(1); // 设置默认等级为1
                 }
             }
             
@@ -72,8 +96,280 @@ namespace TrianCatStudio
             controller.OnWaveStarted += HandleWaveStarted;
             controller.OnWaveCompleted += HandleWaveCompleted;
             
-            // 输出初始化日志
+            // 分帧加载配置和预热对象
+            yield return StartCoroutine(LoadConfigurationsAsync());
+            
+            // 标记初始化完成
+            isInitializing = false;
+            loadingProgress = 1f;
+            OnLoadingProgressChanged?.Invoke(loadingProgress);
+            
             Debug.Log("[SpawnManager] 初始化完成");
+        }
+        
+        /// <summary>
+        /// 异步加载配置
+        /// </summary>
+        private IEnumerator LoadConfigurationsAsync()
+        {
+            // 如果不使用分帧加载，直接同步加载
+            if (!useFrameLoading)
+            {
+                SpawnController.Instance.LoadAllConfigurations();
+                configurationLoaded = true;
+                loadingProgress = 1f;
+                OnLoadingProgressChanged?.Invoke(loadingProgress);
+                yield break;
+            }
+            
+            // 分步加载
+            // 1. 加载刷怪规则
+            yield return StartCoroutine(LoadSpawnRulesAsync());
+            loadingProgress = 0.33f;
+            OnLoadingProgressChanged?.Invoke(loadingProgress);
+            
+            // 2. 加载波次配置
+            yield return StartCoroutine(LoadSpawnWavesAsync());
+            loadingProgress = 0.66f;
+            OnLoadingProgressChanged?.Invoke(loadingProgress);
+            
+            // 3. 加载触发器配置并创建触发器
+            yield return StartCoroutine(LoadSpawnTriggersAsync());
+            loadingProgress = 1.0f;
+            OnLoadingProgressChanged?.Invoke(loadingProgress);
+            
+            configurationLoaded = true;
+            Debug.Log("[SpawnManager] 配置异步加载完成");
+        }
+        
+        /// <summary>
+        /// 异步加载刷怪规则
+        /// </summary>
+        private IEnumerator LoadSpawnRulesAsync()
+        {
+            TextAsset rulesJson = Resources.Load<TextAsset>(SpawnController.SPAWN_RULES_PATH);
+            if (rulesJson != null)
+            {
+                bool loadingSuccess = true;
+                SpawnController.SpawnRulesContainer container = null;
+                
+                try
+                {
+                    container = JsonUtility.FromJson<SpawnController.SpawnRulesContainer>(rulesJson.text);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[SpawnManager] 加载刷怪规则失败: {e.Message}");
+                    loadingSuccess = false;
+                }
+                
+                if (loadingSuccess && container != null)
+                {
+                    // 分帧添加规则
+                    int totalRules = container.spawnRules.Count;
+                    int processedRules = 0;
+                    
+                    while (processedRules < totalRules)
+                    {
+                        int rulesThisFrame = Mathf.Min(objectsPerFrame, totalRules - processedRules);
+                        
+                        for (int i = 0; i < rulesThisFrame; i++)
+                        {
+                            SpawnController.Instance.AddSpawnRule(container.spawnRules[processedRules + i]);
+                        }
+                        
+                        processedRules += rulesThisFrame;
+                        
+                        // 更新进度
+                        float localProgress = (float)processedRules / totalRules;
+                        
+                        // 仅在调试模式下显示详细进度
+                        if (debugMode)
+                        {
+                            Debug.Log($"[SpawnManager] 加载刷怪规则进度: {localProgress:P}");
+                        }
+                        
+                        yield return new WaitForSeconds(frameLoadingInterval);
+                    }
+                    
+                    Debug.Log($"[SpawnManager] 成功加载 {container.spawnRules.Count} 个刷怪规则");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpawnManager] 无法找到刷怪规则配置文件: {SpawnController.SPAWN_RULES_PATH}");
+            }
+        }
+        
+        /// <summary>
+        /// 异步加载波次配置
+        /// </summary>
+        private IEnumerator LoadSpawnWavesAsync()
+        {
+            TextAsset wavesJson = Resources.Load<TextAsset>(SpawnController.SPAWN_WAVES_PATH);
+            if (wavesJson != null)
+            {
+                bool loadingSuccess = true;
+                SpawnController.SpawnWavesContainer container = null;
+                
+                try
+                {
+                    container = JsonUtility.FromJson<SpawnController.SpawnWavesContainer>(wavesJson.text);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[SpawnManager] 加载波次配置失败: {e.Message}");
+                    loadingSuccess = false;
+                }
+                
+                if (loadingSuccess && container != null)
+                {
+                    // 分帧添加波次
+                    int totalWaves = container.spawnWaves.Count;
+                    int processedWaves = 0;
+                    
+                    while (processedWaves < totalWaves)
+                    {
+                        int wavesThisFrame = Mathf.Min(objectsPerFrame, totalWaves - processedWaves);
+                        
+                        for (int i = 0; i < wavesThisFrame; i++)
+                        {
+                            SpawnController.Instance.AddSpawnWave(container.spawnWaves[processedWaves + i]);
+                        }
+                        
+                        processedWaves += wavesThisFrame;
+                        
+                        // 更新进度
+                        float localProgress = (float)processedWaves / totalWaves;
+                        
+                        // 仅在调试模式下显示详细进度
+                        if (debugMode)
+                        {
+                            Debug.Log($"[SpawnManager] 加载波次进度: {localProgress:P}");
+                        }
+                        
+                        yield return new WaitForSeconds(frameLoadingInterval);
+                    }
+                    
+                    Debug.Log($"[SpawnManager] 成功加载 {container.spawnWaves.Count} 个波次");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpawnManager] 无法找到波次配置文件: {SpawnController.SPAWN_WAVES_PATH}");
+            }
+        }
+        
+        /// <summary>
+        /// 异步加载触发器配置
+        /// </summary>
+        private IEnumerator LoadSpawnTriggersAsync()
+        {
+            TextAsset triggersJson = Resources.Load<TextAsset>(SpawnController.SPAWN_TRIGGERS_PATH);
+            if (triggersJson != null)
+            {
+                bool loadingSuccess = true;
+                SpawnController.SpawnTriggersContainer container = null;
+                
+                try
+                {
+                    container = JsonUtility.FromJson<SpawnController.SpawnTriggersContainer>(triggersJson.text);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[SpawnManager] 加载触发器配置失败: {e.Message}");
+                    loadingSuccess = false;
+                }
+                
+                if (loadingSuccess && container != null)
+                {
+                    // 分帧创建触发器
+                    int totalTriggers = container.spawnTriggers.Count;
+                    int processedTriggers = 0;
+                    
+                    // 创建容器
+                    GameObject triggerContainer = new GameObject("SpawnTriggers");
+                    
+                    while (processedTriggers < totalTriggers)
+                    {
+                        int triggersThisFrame = Mathf.Min(objectsPerFrame, totalTriggers - processedTriggers);
+                        
+                        for (int i = 0; i < triggersThisFrame; i++)
+                        {
+                            var triggerData = container.spawnTriggers[processedTriggers + i];
+                            
+                            // 缓存触发器数据
+                            SpawnController.Instance.AddTriggerData(triggerData);
+                            
+                            // 创建触发器游戏对象
+                            if (triggerData.enabled)
+                            {
+                                yield return CreateTriggerObject(triggerData, triggerContainer.transform);
+                            }
+                        }
+                        
+                        processedTriggers += triggersThisFrame;
+                        
+                        // 更新进度
+                        float localProgress = (float)processedTriggers / totalTriggers;
+                        
+                        // 仅在调试模式下显示详细进度
+                        if (debugMode)
+                        {
+                            Debug.Log($"[SpawnManager] 加载触发器进度: {localProgress:P}");
+                        }
+                        
+                        yield return new WaitForSeconds(frameLoadingInterval);
+                    }
+                    
+                    Debug.Log($"[SpawnManager] 成功加载 {container.spawnTriggers.Count} 个触发器");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpawnManager] 无法找到触发器配置文件: {SpawnController.SPAWN_TRIGGERS_PATH}");
+            }
+        }
+        
+        /// <summary>
+        /// 创建单个触发器对象
+        /// </summary>
+        private IEnumerator CreateTriggerObject(SpawnController.SpawnTriggerData data, Transform parent)
+        {
+            GameObject triggerObj = new GameObject(data.triggerName);
+            triggerObj.transform.parent = parent;
+            triggerObj.transform.position = data.position;
+            triggerObj.transform.eulerAngles = data.rotation;
+            
+            // 添加碰撞器
+            BoxCollider collider = triggerObj.AddComponent<BoxCollider>();
+            collider.size = data.size;
+            collider.isTrigger = true;
+            
+            // 添加SpawnTrigger组件
+            SpawnTrigger trigger = triggerObj.AddComponent<SpawnTrigger>();
+            
+            // 设置目标层
+            if (data.targetLayers != null && data.targetLayers.Count > 0)
+            {
+                LayerMask mask = 0;
+                foreach (var layerName in data.targetLayers)
+                {
+                    mask |= 1 << LayerMask.NameToLayer(layerName);
+                }
+                typeof(SpawnTrigger).GetField("targetLayers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, mask);
+            }
+            
+            // 设置触发器属性
+            typeof(SpawnTrigger).GetField("triggerType", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, (SpawnTrigger.TriggerType)data.triggerType);
+            typeof(SpawnTrigger).GetField("oneTimeOnly", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.oneTimeOnly);
+            typeof(SpawnTrigger).GetField("cooldown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.cooldown);
+            typeof(SpawnTrigger).GetField("activateOnStart", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.activateOnStart);
+            typeof(SpawnTrigger).GetField("triggerId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.triggerId);
+            typeof(SpawnTrigger).GetField("waveIds", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.waveIds.ToArray());
+            typeof(SpawnTrigger).GetField("triggerAllWaves", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.triggerAllWaves);
+            
+            yield return null;
         }
         
         private void OnDestroy()
@@ -90,7 +386,7 @@ namespace TrianCatStudio
         
         private void Update()
         {
-            if (!isActive)
+            if (!isActive || !configurationLoaded)
                 return;
                 
             // 更新游戏时间
@@ -120,7 +416,15 @@ namespace TrianCatStudio
         /// </summary>
         private IEnumerator ActivateWithDelay(float delay)
         {
+            // 等待初始化完成
+            while (isInitializing)
+            {
+                yield return null;
+            }
+            
+            // 额外延迟
             yield return new WaitForSeconds(delay);
+            
             ActivateSpawning();
         }
         
@@ -129,6 +433,13 @@ namespace TrianCatStudio
         /// </summary>
         public void ActivateSpawning()
         {
+            // 如果仍在初始化，等待初始化完成后再激活
+            if (isInitializing)
+            {
+                StartCoroutine(ActivateWithDelay(0.1f));
+                return;
+            }
+            
             isActive = true;
             SpawnController.Instance.SetSpawningEnabled(true);
             lastUpdateTime = Time.time;
@@ -163,16 +474,34 @@ namespace TrianCatStudio
                 DeactivateSpawning();
             }
             
-            // 重新加载配置
-            SpawnController.Instance.ReloadAllConfigurations();
+            // 设置正在初始化状态
+            isInitializing = true;
+            configurationLoaded = false;
+            loadingProgress = 0f;
             
-            // 如果之前是活跃的，重新激活
+            // 重新异步加载配置
+            StartCoroutine(LoadConfigurationsAsync());
+            
+            // 等待加载完成后重新激活
             if (wasActive)
             {
-                ActivateSpawning();
+                StartCoroutine(ReactivateAfterLoad());
             }
             
-            Debug.Log("[SpawnManager] 刷怪配置已重新加载");
+            Debug.Log("[SpawnManager] 刷怪配置正在重新加载...");
+        }
+        
+        /// <summary>
+        /// 等待加载完成后重新激活
+        /// </summary>
+        private IEnumerator ReactivateAfterLoad()
+        {
+            while (isInitializing)
+            {
+                yield return null;
+            }
+            
+            ActivateSpawning();
         }
         
         /// <summary>

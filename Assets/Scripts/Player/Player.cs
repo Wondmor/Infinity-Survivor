@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace TrianCatStudio
 {
-    [RequireComponent(typeof(Rigidbody), typeof(Animator))]
+    [RequireComponent(typeof(Rigidbody), typeof(Animator), typeof(GroundDetector))]
     public class Player : MonoBehaviour
     {
         // 组件引用
@@ -15,6 +15,7 @@ namespace TrianCatStudio
         [SerializeField] public InputManager InputManager;
         [SerializeField] public Transform CameraPivot;
         [SerializeField] public PlayerAnimController AnimController; // 使用PlayerAnimController类型
+        [SerializeField] public GroundDetector GroundDetector; // 地面检测组件引用
 
         // 子弹设置
         [Header("Shooting Settings")]
@@ -38,22 +39,6 @@ namespace TrianCatStudio
         [SerializeField] private float airDirectionChangeMultiplier = 0.5f; // 空中方向改变系数
         [SerializeField] private float landingRecoveryTime = 0.2f; // 落地恢复时间
 
-        // 地面检测参数
-        [Header("Ground Detection Settings")]
-        [SerializeField] private GroundDetectionMethod groundDetectionMethod = GroundDetectionMethod.MultiRaycast; // 地面检测方法
-        [SerializeField] private float groundCheckDistance = 0.3f; // 地面检测距离
-        [SerializeField] private float groundCheckRadius = 0.4f;   // 地面检测半径
-        [SerializeField] private int groundRayCount = 5;           // 地面检测射线数量
-        [SerializeField] private float maxSlopeAngle = 45f;        // 最大可行走斜坡角度
-        [SerializeField] private LayerMask groundLayer = -1;       // 地面层级
-        [SerializeField] private bool showDebugRays = true;        // 是否显示调试射线
-
-        // 楼梯处理参数
-        [Header("Stairs Handling")]
-        [SerializeField] private bool enableStairsHandling = true; // 启用楼梯处理
-        [SerializeField] private float stepHeight = 0.3f;          // 最大台阶高度
-        [SerializeField] private float stepSmoothing = 0.1f;       // 台阶平滑过渡时间
-
         // 跳跃参数
         [Header("Jump Settings")]
         [SerializeField] private float jumpForce = 5f;
@@ -71,14 +56,13 @@ namespace TrianCatStudio
         [SerializeField] private float slideCooldown = 1f; // 滑铲冷却时间
 
         // 运行时状态
-        public bool IsGrounded { get; private set; }
+        public bool IsGrounded => GroundDetector?.IsGrounded ?? false;
         public Vector3 MoveDirection { get; private set; }
         public Vector3 Velocity { get; private set; }
         public bool HasDoubleJumped { get; set; }
-        public float lastGroundedTime { get; private set; }
+        public float lastGroundedTime => GroundDetector?.LastGroundedTime ?? 0f;
         public float lastJumpTime { get; set; }
         private float landingTime; // 落地时间
-        private bool wasGrounded; // 上一帧是否在地面
         public int jumpCount { get; set; }
         public bool isJumpRequested { get; set; }
         private float lastSlideTime; // 上次滑铲时间
@@ -87,14 +71,6 @@ namespace TrianCatStudio
 
         // 状态机系统
         private PlayerStateManager stateManager;
-
-        // 地面检测方法枚举
-        public enum GroundDetectionMethod
-        {
-            SingleRaycast,  // 单射线检测（原始方法）
-            MultiRaycast,   // 多射线检测
-            SphereCast      // 球形检测
-        }
 
         private void Awake()
         {
@@ -105,6 +81,19 @@ namespace TrianCatStudio
                 Rb = GetComponent<Rigidbody>();
                 Animator = GetComponent<Animator>();
                 InputManager = GetComponent<InputManager>();
+                
+                // 获取地面检测组件
+                GroundDetector = GetComponent<GroundDetector>();
+                if (GroundDetector == null)
+                {
+                    Debug.LogError("Player.Awake: 未找到GroundDetector组件");
+                    GroundDetector = gameObject.AddComponent<GroundDetector>();
+                }
+                
+                // 订阅地面检测事件
+                GroundDetector.OnGroundStateChanged += HandleGroundStateChanged;
+                GroundDetector.OnLanding += HandleLanding;
+                GroundDetector.OnHardLanding += HandleHardLanding;
                 
                 // 确保PlayerStateManager组件存在并启用
                 stateManager = GetComponent<PlayerStateManager>();
@@ -174,7 +163,6 @@ namespace TrianCatStudio
         {
             UpdateMovementParameters();
             UpdateStateParameters();
-            HandleGroundDetection();
             
             // 更新瞄准方向
             if (InputManager.IsAiming || InputManager.IsFirePressed)
@@ -185,18 +173,34 @@ namespace TrianCatStudio
 
         private void FixedUpdate()
         {
-            HandleGroundDetection();
             HandleMovement();
+            
+            // 处理楼梯
+            if (IsGrounded && MoveDirection.magnitude > 0.1f)
+            {
+                GroundDetector.HandleStairs(MoveDirection);
+            }
         }
 
         private void OnDestroy()
         {
-            // 注销事件
-            InputManager.OnJumpAction -= HandleJumpInput;
-            InputManager.OnAimAction -= HandleAimInput;
-            InputManager.OnCrouchAction -= HandleCrouchInput;
-            InputManager.OnFireAction -= HandleFireInput; // 注销单次开火事件
-            InputManager.OnFireActionChanged -= HandleFireInputChanged; // 注销持续开火状态变化事件
+            // 注销地面检测事件
+            if (GroundDetector != null)
+            {
+                GroundDetector.OnGroundStateChanged -= HandleGroundStateChanged;
+                GroundDetector.OnLanding -= HandleLanding;
+                GroundDetector.OnHardLanding -= HandleHardLanding;
+            }
+            
+            // 注销输入事件
+            if (InputManager != null)
+            {
+                InputManager.OnJumpAction -= HandleJumpInput;
+                InputManager.OnAimAction -= HandleAimInput;
+                InputManager.OnCrouchAction -= HandleCrouchInput;
+                InputManager.OnFireAction -= HandleFireInput; // 注销单次开火事件
+                InputManager.OnFireActionChanged -= HandleFireInputChanged; // 注销持续开火状态变化事件
+            }
         }
 
         #region 输入处理
@@ -358,6 +362,8 @@ namespace TrianCatStudio
             // 同步输入到状态机，但不设置动画参数
             stateManager.SetMoveInput(InputManager.GetInputMagnitude());
             stateManager.SetRunning(InputManager.IsRunning);
+            stateManager.SetGrounded(IsGrounded);
+            stateManager.SetVerticalVelocity(Rb.velocity.y);
             
             // 更新AnimatorController的移动状态
             if (AnimController != null)
@@ -366,6 +372,9 @@ namespace TrianCatStudio
                 bool isRunning = InputManager.IsRunning;
                 float speed = isMoving ? (isRunning ? runSpeed : walkSpeed) : 0f;
                 AnimController.SetMovementState(isMoving, isRunning, speed);
+                
+                // 更新接地状态
+                AnimController.SetGroundedState(IsGrounded, Rb.velocity.y);
             }
         }
         
@@ -396,211 +405,60 @@ namespace TrianCatStudio
         }
         #endregion
 
-        #region 物理系统
-        private void HandleGroundDetection()
+        #region 地面检测事件处理
+        private void HandleGroundStateChanged(bool isGrounded)
         {
-            wasGrounded = IsGrounded;
+            // 通知状态机地面状态变化
+            stateManager.SetGrounded(isGrounded);
             
-            // 改进的地面检测方法，使用多点射线检测
-            bool groundDetected = CheckGrounded();
-            
-            // 如果刚刚跳跃，强制设置为非地面状态
-            if (Time.time - lastJumpTime < 0.1f && Rb.velocity.y > 0)
+            if (isGrounded)
             {
-                groundDetected = false;
-                Debug.Log("强制设置为非地面状态 - 刚刚跳跃");
-            }
-            
-            IsGrounded = groundDetected;
-            
-            // 更新着地时间
-            if (IsGrounded)
-            {
-                // 检测是否刚刚落地
-                if (!wasGrounded)
-                {
-                    landingTime = Time.time;
-                    // 如果从高处落下，触发硬着陆状态
-                    if (Rb.velocity.y < -5f)
-                    {
-                        stateManager.TriggerHardLanding();
-                        // 使用AnimatorController触发硬着陆动画
-                        if (AnimController != null)
-                        {
-                            AnimController.TriggerHardLand();
-                        }
-                    }
-                    else
-                    {
-                        stateManager.TriggerLanding();
-                        // 使用AnimatorController触发着陆动画
-                        if (AnimController != null)
-                        {
-                            AnimController.TriggerLand();
-                        }
-                    }
-                }
-                
-                lastGroundedTime = Time.time;
+                // 刚着地时的处理
                 HasDoubleJumped = false;
                 ResetJumpCount();
             }
-            
-            // 通知状态机地面状态变化
-            stateManager.SetGrounded(IsGrounded);
-            stateManager.SetVerticalVelocity(Rb.velocity.y);
-            
-            // 更新AnimatorController的接地状态
-            if (AnimController != null)
+            else if (Rb.velocity.y < 0)
             {
-                AnimController.SetGroundedState(IsGrounded, Rb.velocity.y);
-            }
-            
-            // 如果刚离开地面且垂直速度为负，触发下落状态
-            if (!IsGrounded && wasGrounded && Rb.velocity.y < 0)
-            {
-                // 不再调用 TriggerFalling，因为我们已经删除了 FallingState
-                // stateManager.TriggerFalling();
-                
-                // 使用AnimatorController触发下落动画
+                // 离开地面且正在下落时
                 if (AnimController != null)
                 {
                     AnimController.TriggerFall();
                 }
             }
-            
-            // 调试输出
-            if (IsGrounded != wasGrounded)
-            {
-                Debug.Log($"地面状态变化: {wasGrounded} -> {IsGrounded}, 垂直速度: {Rb.velocity.y}");
-            }
         }
-
-        // 地面检测方法
-        private bool CheckGrounded()
+        
+        private void HandleLanding(float fallSpeed)
         {
-            switch (groundDetectionMethod)
+            // 记录着陆时间
+            landingTime = Time.time;
+            
+            // 触发正常着陆状态
+            stateManager.TriggerLanding();
+            
+            // 使用AnimatorController触发着陆动画
+            if (AnimController != null)
             {
-                case GroundDetectionMethod.SingleRaycast:
-                    return CheckGroundedSingleRay();
-                case GroundDetectionMethod.MultiRaycast:
-                    return CheckGroundedMultiRay();
-                case GroundDetectionMethod.SphereCast:
-                    return CheckGroundedSphere();
-                default:
-                    return CheckGroundedMultiRay();
+                AnimController.TriggerLand();
             }
         }
-
-        // 单射线检测地面（原始方法）
-        private bool CheckGroundedSingleRay()
+        
+        private void HandleHardLanding(float fallSpeed)
         {
-            float rayOriginHeight = 0.1f;
-            Vector3 rayOrigin = transform.position + Vector3.up * rayOriginHeight;
+            // 记录着陆时间
+            landingTime = Time.time;
             
-            if (showDebugRays)
+            // 触发硬着陆状态
+            stateManager.TriggerHardLanding();
+            
+            // 使用AnimatorController触发硬着陆动画
+            if (AnimController != null)
             {
-                Debug.DrawRay(rayOrigin, Vector3.down * groundCheckDistance, Color.yellow);
+                AnimController.TriggerHardLand();
             }
-            
-            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, groundCheckDistance, groundLayer))
-            {
-                float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-                return slopeAngle < maxSlopeAngle;
-            }
-            
-            return false;
         }
+        #endregion
 
-        // 多射线检测地面
-        private bool CheckGroundedMultiRay()
-        {
-            // 检测起点高度 - 增加高度以避免误判
-            float rayOriginHeight = 0.15f;
-            Vector3 rayOrigin = transform.position + Vector3.up * rayOriginHeight;
-            
-            // 减小地面检测距离，使检测更精确
-            float effectiveGroundCheckDistance = groundCheckDistance * 0.8f;
-            
-            // 中心射线检测
-            if (showDebugRays)
-            {
-                Debug.DrawRay(rayOrigin, Vector3.down * effectiveGroundCheckDistance, Color.green);
-            }
-            
-            // 如果垂直速度明显向上，直接认为不在地面上
-            if (Rb.velocity.y > 0.5f)
-            {
-                return false;
-            }
-            
-            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, effectiveGroundCheckDistance, groundLayer))
-            {
-                // 计算角度，处理斜坡
-                float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-                if (slopeAngle < maxSlopeAngle) // 可配置的最大斜坡角度
-                {
-                    return true;
-                }
-            }
-            
-            // 周围多点射线检测，处理楼梯等不规则地形
-            for (int i = 0; i < groundRayCount; i++)
-            {
-                // 计算射线方向（围绕角色的圆形分布）
-                float angle = i * (360f / groundRayCount);
-                Vector3 direction = Quaternion.Euler(0, angle, 0) * transform.forward;
-                Vector3 rayStart = rayOrigin + direction * groundCheckRadius;
-                
-                // 绘制调试射线
-                if (showDebugRays)
-                {
-                    Debug.DrawRay(rayStart, Vector3.down * effectiveGroundCheckDistance, Color.red);
-                }
-                
-                // 射线检测
-                if (Physics.Raycast(rayStart, Vector3.down, out hit, effectiveGroundCheckDistance, groundLayer))
-                {
-                    float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-                    if (slopeAngle < maxSlopeAngle) // 可配置的最大斜坡角度
-                    {
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        }
-
-        // 球形检测地面
-        private bool CheckGroundedSphere()
-        {
-            // 检测起点高度
-            float rayOriginHeight = 0.1f;
-            Vector3 sphereCenter = transform.position + Vector3.up * rayOriginHeight;
-            
-            // 绘制调试球体
-            if (showDebugRays)
-            {
-                Debug.DrawLine(sphereCenter, sphereCenter + Vector3.down * groundCheckDistance, Color.blue);
-                // 在Scene视图中绘制球体
-                #if UNITY_EDITOR
-                UnityEditor.Handles.color = Color.blue;
-                UnityEditor.Handles.DrawWireDisc(sphereCenter, Vector3.up, groundCheckRadius);
-                UnityEditor.Handles.DrawWireDisc(sphereCenter + Vector3.down * groundCheckDistance, Vector3.up, groundCheckRadius);
-                #endif
-            }
-            
-            // 球形检测
-            if (Physics.SphereCast(sphereCenter, groundCheckRadius, Vector3.down, out RaycastHit hit, groundCheckDistance, groundLayer))
-            {
-                float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-                return slopeAngle < maxSlopeAngle;
-            }
-            
-            return false;
-        }
-
+        #region 物理系统
         private void HandleMovement()
         {
             float targetSpeed = GetTargetSpeed();
@@ -649,12 +507,6 @@ namespace TrianCatStudio
             else
             {
                 currentAcceleration = acceleration;
-                
-                // 处理楼梯
-                if (enableStairsHandling && MoveDirection.magnitude > 0.1f)
-                {
-                    HandleStairs();
-                }
             }
             
             // 保留垂直速度
@@ -699,8 +551,8 @@ namespace TrianCatStudio
         private float GetTargetSpeed()
         {
             if (!IsGrounded) return Rb.velocity.magnitude;
-            if (InputManager.IsRunning)
-                return runSpeed;
+            if (IsCrouching) return crouchSpeed;
+            if (InputManager.IsRunning) return runSpeed;
             return walkSpeed;
         }
         #endregion
@@ -721,179 +573,6 @@ namespace TrianCatStudio
         {
             // 不再依赖IsGrounded属性，只检查跳跃计数和二段跳状态
             return jumpCount == 1 && !HasDoubleJumped;
-        }
-
-        // 处理楼梯
-        private void HandleStairs()
-        {
-            // 前方检测点
-            Vector3 forwardPoint = transform.position + transform.forward * 0.5f;
-            
-            // 检测前方是否有障碍物
-            if (Physics.Raycast(forwardPoint, Vector3.down, out RaycastHit downHit, stepHeight * 2f, groundLayer))
-            {
-                // 从障碍物上方发射射线向下
-                Vector3 stepCheckStart = new Vector3(forwardPoint.x, transform.position.y + stepHeight, forwardPoint.z);
-                
-                if (showDebugRays)
-                {
-                    Debug.DrawLine(forwardPoint, forwardPoint + Vector3.down * stepHeight * 2f, Color.yellow);
-                    Debug.DrawLine(stepCheckStart, stepCheckStart + Vector3.down * stepHeight * 2f, Color.cyan);
-                }
-                
-                // 检测是否是台阶
-                if (Physics.Raycast(stepCheckStart, Vector3.down, out RaycastHit stepHit, stepHeight * 2f, groundLayer))
-                {
-                    // 计算高度差
-                    float heightDifference = Mathf.Abs(downHit.point.y - stepHit.point.y);
-                    
-                    // 如果高度差在台阶范围内
-                    if (heightDifference > 0.01f && heightDifference < stepHeight)
-                    {
-                        // 判断是上楼梯还是下楼梯
-                        bool isAscending = stepHit.point.y > downHit.point.y;
-                        
-                        if (isAscending)
-                        {
-                            // 上楼梯：稍微提升角色位置
-                            Vector3 targetPosition = new Vector3(
-                                transform.position.x,
-                                stepHit.point.y + 0.05f, // 稍微抬高一点，避免卡住
-                                transform.position.z
-                            );
-                            
-                            // 平滑过渡
-                            transform.position = Vector3.Lerp(
-                                transform.position,
-                                targetPosition,
-                                stepSmoothing
-                            );
-                        }
-                        else
-                        {
-                            // 下楼梯：保持接地状态，避免下楼时出现跳跃
-                            IsGrounded = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // 在编辑器中可视化地面检测范围
-        private void OnDrawGizmosSelected()
-        {
-            // 检测起点高度
-            float rayOriginHeight = 0.1f;
-            Vector3 rayOrigin = transform.position + Vector3.up * rayOriginHeight;
-            
-            // 设置Gizmos颜色
-            Gizmos.color = Color.green;
-            
-            // 根据不同的检测方法绘制不同的Gizmos
-            switch (groundDetectionMethod)
-            {
-                case GroundDetectionMethod.SingleRaycast:
-                    // 单射线检测
-                    Gizmos.color = Color.yellow;
-                    Gizmos.DrawLine(rayOrigin, rayOrigin + Vector3.down * groundCheckDistance);
-                    break;
-                    
-                case GroundDetectionMethod.MultiRaycast:
-                    // 中心射线
-                    Gizmos.color = Color.green;
-                    Gizmos.DrawLine(rayOrigin, rayOrigin + Vector3.down * groundCheckDistance);
-                    
-                    // 周围射线
-                    Gizmos.color = Color.red;
-                    for (int i = 0; i < groundRayCount; i++)
-                    {
-                        float angle = i * (360f / groundRayCount);
-                        Vector3 direction = Quaternion.Euler(0, angle, 0) * Vector3.forward;
-                        Vector3 rayStart = rayOrigin + direction * groundCheckRadius;
-                        Gizmos.DrawLine(rayStart, rayStart + Vector3.down * groundCheckDistance);
-                    }
-                    
-                    // 绘制检测半径
-                    Gizmos.color = new Color(1, 0, 0, 0.2f);
-                    DrawCircle(rayOrigin, groundCheckRadius, 32);
-                    break;
-                    
-                case GroundDetectionMethod.SphereCast:
-                    // 球形检测
-                    Gizmos.color = Color.blue;
-                    Gizmos.DrawLine(rayOrigin, rayOrigin + Vector3.down * groundCheckDistance);
-                    
-                    // 绘制球体
-                    Gizmos.DrawWireSphere(rayOrigin, groundCheckRadius);
-                    Gizmos.DrawWireSphere(rayOrigin + Vector3.down * groundCheckDistance, groundCheckRadius);
-                    
-                    // 绘制球体路径
-                    Gizmos.color = new Color(0, 0, 1, 0.2f);
-                    DrawCylinder(
-                        rayOrigin, 
-                        rayOrigin + Vector3.down * groundCheckDistance,
-                        groundCheckRadius
-                    );
-                    break;
-            }
-            
-            // 如果启用了楼梯处理，绘制楼梯检测
-            if (enableStairsHandling)
-            {
-                Gizmos.color = Color.cyan;
-                Vector3 forwardPoint = transform.position + transform.forward * 0.5f;
-                Gizmos.DrawLine(forwardPoint, forwardPoint + Vector3.down * stepHeight * 2f);
-                
-                Vector3 stepCheckStart = new Vector3(forwardPoint.x, transform.position.y + stepHeight, forwardPoint.z);
-                Gizmos.DrawLine(stepCheckStart, stepCheckStart + Vector3.down * stepHeight * 2f);
-            }
-        }
-        
-        // 辅助方法：绘制圆形
-        private void DrawCircle(Vector3 center, float radius, int segments)
-        {
-            float angle = 0f;
-            float angleStep = 360f / segments;
-            Vector3 previousPoint = center + new Vector3(Mathf.Sin(0) * radius, 0, Mathf.Cos(0) * radius);
-            
-            for (int i = 0; i <= segments; i++)
-            {
-                angle += angleStep;
-                float radian = angle * Mathf.Deg2Rad;
-                Vector3 currentPoint = center + new Vector3(Mathf.Sin(radian) * radius, 0, Mathf.Cos(radian) * radius);
-                Gizmos.DrawLine(previousPoint, currentPoint);
-                previousPoint = currentPoint;
-            }
-        }
-        
-        // 辅助方法：绘制圆柱体
-        private static void DrawCylinder(Vector3 start, Vector3 end, float radius)
-        {
-            Vector3 up = (end - start).normalized * radius;
-            Vector3 forward = Vector3.Slerp(up, -up, 0.5f);
-            Vector3 right = Vector3.Cross(up, forward).normalized * radius;
-            
-            float height = (end - start).magnitude;
-            float sideLength = height / 2f;
-            
-            // 绘制圆柱体侧面
-            Vector3 middle = (start + end) / 2f;
-            
-            for (float i = 0; i < 360; i += 30)
-            {
-                float radian = i * Mathf.Deg2Rad;
-                float radian2 = (i + 30) * Mathf.Deg2Rad;
-                
-                Vector3 point1 = start + Mathf.Sin(radian) * right + Mathf.Cos(radian) * forward;
-                Vector3 point2 = end + Mathf.Sin(radian) * right + Mathf.Cos(radian) * forward;
-                Vector3 point3 = end + Mathf.Sin(radian2) * right + Mathf.Cos(radian2) * forward;
-                Vector3 point4 = start + Mathf.Sin(radian2) * right + Mathf.Cos(radian2) * forward;
-                
-                Gizmos.DrawLine(point1, point2);
-                Gizmos.DrawLine(point2, point3);
-                Gizmos.DrawLine(point3, point4);
-                Gizmos.DrawLine(point4, point1);
-            }
         }
         #endregion
     }
