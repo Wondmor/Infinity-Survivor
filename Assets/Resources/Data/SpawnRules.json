@@ -1,0 +1,198 @@
+{
+  "spawnRules": [
+    {
+      "ruleId": "rule_zombie_basic",
+      "ruleName": "基础僵尸刷怪",
+      "enabled": true,
+      "enemies": [
+        {
+          "enemyId": "zombie_basic",
+          "weight": 1.0,
+          "minLevel": 1,
+          "maxLevel": 3
+        }
+      ],
+      "positionType": 0,
+      "spawnAreaSize": {
+        "x": 10.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "minDistanceFromPlayer": 5.0,
+      "maxDistanceFromPlayer": 15.0,
+      "useNavMesh": true,
+      "minSpawnCount": 2,
+      "maxSpawnCount": 5,
+      "maxConcurrentEnemies": 10,
+      "spawnInterval": 3.0,
+      "conditionType": 0,
+      "spawnProbability": 1.0,
+      "playerLevelRequirement": 1,
+      "timeRequirement": 0.0,
+      "prerequisiteRuleId": "",
+      "hasLimit": false,
+      "spawnLimit": 0,
+      "progressModifier": 1.0
+    },
+    {
+      "ruleId": "rule_zombie_mixed",
+      "ruleName": "混合僵尸刷怪",
+      "enabled": true,
+      "enemies": [
+        {
+          "enemyId": "zombie_basic",
+          "weight": 5.0,
+          "minLevel": 1,
+          "maxLevel": 2
+        },
+        {
+          "enemyId": "zombie_fast",
+          "weight": 3.0,
+          "minLevel": 1,
+          "maxLevel": 2
+        },
+        {
+          "enemyId": "zombie_tank",
+          "weight": 1.0,
+          "minLevel": 1,
+          "maxLevel": 1
+        }
+      ],
+      "positionType": 2,
+      "spawnAreaSize": {
+        "x": 15.0,
+        "y": 0.0,
+        "z": 15.0
+      },
+      "minDistanceFromPlayer": 8.0,
+      "maxDistanceFromPlayer": 20.0,
+      "useNavMesh": true,
+      "minSpawnCount": 3,
+      "maxSpawnCount": 7,
+      "maxConcurrentEnemies": 15,
+      "spawnInterval": 5.0,
+      "conditionType": 0,
+      "spawnProbability": 1.0,
+      "playerLevelRequirement": 2,
+      "timeRequirement": 60.0,
+      "prerequisiteRuleId": "",
+      "hasLimit": false,
+      "spawnLimit": 0,
+      "progressModifier": 1.2
+    },
+    {
+      "ruleId": "rule_skeleton_basic",
+      "ruleName": "基础骷髅刷怪",
+      "enabled": true,
+      "enemies": [
+        {
+          "enemyId": "skeleton_archer",
+          "weight": 2.0,
+          "minLevel": 1,
+          "maxLevel": 3
+        },
+        {
+          "enemyId": "skeleton_warrior",
+          "weight": 3.0,
+          "minLevel": 1,
+          "maxLevel": 3
+        }
+      ],
+      "positionType": 2,
+      "spawnAreaSize": {
+        "x": 15.0,
+        "y": 0.0,
+        "z": 15.0
+      },
+      "minDistanceFromPlayer": 10.0,
+      "maxDistanceFromPlayer": 25.0,
+      "useNavMesh": true,
+      "minSpawnCount": 2,
+      "maxSpawnCount": 4,
+      "maxConcurrentEnemies": 8,
+      "spawnInterval": 6.0,
+      "conditionType": 2,
+      "spawnProbability": 1.0,
+      "playerLevelRequirement": 3,
+      "timeRequirement": 180.0,
+      "prerequisiteRuleId": "",
+      "hasLimit": false,
+      "spawnLimit": 0,
+      "progressModifier": 1.5
+    },
+    {
+      "ruleId": "rule_elite",
+      "ruleName": "精英怪物刷怪",
+      "enabled": true,
+      "enemies": [
+        {
+          "enemyId": "zombie_tank",
+          "weight": 1.0,
+          "minLevel": 2,
+          "maxLevel": 4
+        },
+        {
+          "enemyId": "skeleton_mage",
+          "weight": 1.0,
+          "minLevel": 2,
+          "maxLevel": 4
+        }
+      ],
+      "positionType": 2,
+      "spawnAreaSize": {
+        "x": 20.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "minDistanceFromPlayer": 15.0,
+      "maxDistanceFromPlayer": 30.0,
+      "useNavMesh": true,
+      "minSpawnCount": 1,
+      "maxSpawnCount": 2,
+      "maxConcurrentEnemies": 3,
+      "spawnInterval": 15.0,
+      "conditionType": 2,
+      "spawnProbability": 0.7,
+      "playerLevelRequirement": 5,
+      "timeRequirement": 300.0,
+      "prerequisiteRuleId": "",
+      "hasLimit": false,
+      "spawnLimit": 0,
+      "progressModifier": 2.0
+    },
+    {
+      "ruleId": "rule_boss",
+      "ruleName": "Boss刷怪",
+      "enabled": true,
+      "enemies": [
+        {
+          "enemyId": "boss_skeleton_king",
+          "weight": 1.0,
+          "minLevel": 3,
+          "maxLevel": 5
+        }
+      ],
+      "positionType": 2,
+      "spawnAreaSize": {
+        "x": 10.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "minDistanceFromPlayer": 20.0,
+      "maxDistanceFromPlayer": 30.0,
+      "useNavMesh": true,
+      "minSpawnCount": 1,
+      "maxSpawnCount": 1,
+      "maxConcurrentEnemies": 1,
+      "spawnInterval": 0.0,
+      "conditionType": 2,
+      "spawnProbability": 1.0,
+      "playerLevelRequirement": 8,
+      "timeRequirement": 600.0,
+      "prerequisiteRuleId": "",
+      "hasLimit": true,
+      "spawnLimit": 1,
+      "progressModifier": 3.0
+    }
+  ]
+} 

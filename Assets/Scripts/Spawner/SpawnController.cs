@@ -31,6 +31,9 @@ namespace TrianCatStudio
         // 波次集合
         private Dictionary<string, SpawnWave> spawnWaves = new Dictionary<string, SpawnWave>();
         
+        // 触发器缓存
+        private Dictionary<string, SpawnTriggerData> spawnTriggers = new Dictionary<string, SpawnTriggerData>();
+        
         // 活跃的敌人
         private List<Enemy> activeEnemies = new List<Enemy>();
         
@@ -43,6 +46,7 @@ namespace TrianCatStudio
         private bool isSpawningEnabled = true;
         private int playerLevel = 1;
         private Transform playerTransform;
+        private int maxEnemyCount = 50;
         
         // 统计数据
         private int totalEnemiesSpawned = 0;
@@ -52,11 +56,66 @@ namespace TrianCatStudio
         public int TotalEnemiesKilled => totalEnemiesKilled;
         public int ActiveEnemyCount => activeEnemies.Count;
         
+        // JSON配置路径
+        private const string SPAWN_RULES_PATH = "Data/SpawnRules";
+        private const string SPAWN_WAVES_PATH = "Data/SpawnWaves";
+        private const string SPAWN_TRIGGERS_PATH = "Data/SpawnTriggers";
+        
+        /// <summary>
+        /// 触发器数据类（用于JSON反序列化）
+        /// </summary>
+        [Serializable]
+        public class SpawnTriggerData
+        {
+            public string triggerId;
+            public string triggerName;
+            public bool enabled = true;
+            public int triggerType = 0;
+            public Vector3 position;
+            public Vector3 size;
+            public Vector3 rotation;
+            public List<string> targetLayers = new List<string>();
+            public bool oneTimeOnly = false;
+            public float cooldown = 0f;
+            public bool activateOnStart = false;
+            public List<string> waveIds = new List<string>();
+            public bool triggerAllWaves = false;
+        }
+        
+        /// <summary>
+        /// 刷怪规则JSON容器
+        /// </summary>
+        [Serializable]
+        private class SpawnRulesContainer
+        {
+            public List<SpawnRule> spawnRules = new List<SpawnRule>();
+        }
+        
+        /// <summary>
+        /// 刷怪波次JSON容器
+        /// </summary>
+        [Serializable]
+        private class SpawnWavesContainer
+        {
+            public List<SpawnWave> spawnWaves = new List<SpawnWave>();
+        }
+        
+        /// <summary>
+        /// 刷怪触发器JSON容器
+        /// </summary>
+        [Serializable]
+        private class SpawnTriggersContainer
+        {
+            public List<SpawnTriggerData> spawnTriggers = new List<SpawnTriggerData>();
+        }
+        
         // 初始化
         protected virtual void Init()
         {
             gameStartTime = Time.time;
-
+            
+            // 加载配置
+            LoadAllConfigurations();
             
             // 找到玩家
             GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -66,6 +125,152 @@ namespace TrianCatStudio
             }
             
             Debug.Log("[SpawnController] 初始化完成");
+        }
+        
+        /// <summary>
+        /// 加载所有配置
+        /// </summary>
+        private void LoadAllConfigurations()
+        {
+            LoadSpawnRules();
+            LoadSpawnWaves();
+            LoadSpawnTriggers();
+        }
+        
+        /// <summary>
+        /// 加载刷怪规则配置
+        /// </summary>
+        private void LoadSpawnRules()
+        {
+            TextAsset rulesJson = Resources.Load<TextAsset>(SPAWN_RULES_PATH);
+            if (rulesJson != null)
+            {
+                try
+                {
+                    SpawnRulesContainer container = JsonUtility.FromJson<SpawnRulesContainer>(rulesJson.text);
+                    foreach (var rule in container.spawnRules)
+                    {
+                        AddSpawnRule(rule);
+                    }
+                    Debug.Log($"[SpawnController] 成功加载 {spawnRules.Count} 个刷怪规则");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[SpawnController] 加载刷怪规则失败: {e.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpawnController] 无法找到刷怪规则配置文件: {SPAWN_RULES_PATH}");
+            }
+        }
+        
+        /// <summary>
+        /// 加载刷怪波次配置
+        /// </summary>
+        private void LoadSpawnWaves()
+        {
+            TextAsset wavesJson = Resources.Load<TextAsset>(SPAWN_WAVES_PATH);
+            if (wavesJson != null)
+            {
+                try
+                {
+                    SpawnWavesContainer container = JsonUtility.FromJson<SpawnWavesContainer>(wavesJson.text);
+                    foreach (var wave in container.spawnWaves)
+                    {
+                        AddSpawnWave(wave);
+                    }
+                    Debug.Log($"[SpawnController] 成功加载 {spawnWaves.Count} 个波次");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[SpawnController] 加载波次配置失败: {e.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpawnController] 无法找到波次配置文件: {SPAWN_WAVES_PATH}");
+            }
+        }
+        
+        /// <summary>
+        /// 加载刷怪触发器配置
+        /// </summary>
+        private void LoadSpawnTriggers()
+        {
+            TextAsset triggersJson = Resources.Load<TextAsset>(SPAWN_TRIGGERS_PATH);
+            if (triggersJson != null)
+            {
+                try
+                {
+                    SpawnTriggersContainer container = JsonUtility.FromJson<SpawnTriggersContainer>(triggersJson.text);
+                    foreach (var triggerData in container.spawnTriggers)
+                    {
+                        spawnTriggers[triggerData.triggerId] = triggerData;
+                    }
+                    
+                    // 创建触发器游戏对象
+                    CreateTriggerObjects();
+                    
+                    Debug.Log($"[SpawnController] 成功加载 {spawnTriggers.Count} 个触发器");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[SpawnController] 加载触发器配置失败: {e.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpawnController] 无法找到触发器配置文件: {SPAWN_TRIGGERS_PATH}");
+            }
+        }
+        
+        /// <summary>
+        /// 创建触发器游戏对象
+        /// </summary>
+        private void CreateTriggerObjects()
+        {
+            GameObject triggerContainer = new GameObject("SpawnTriggers");
+            
+            foreach (var entry in spawnTriggers)
+            {
+                SpawnTriggerData data = entry.Value;
+                if (!data.enabled)
+                    continue;
+                    
+                GameObject triggerObj = new GameObject(data.triggerName);
+                triggerObj.transform.parent = triggerContainer.transform;
+                triggerObj.transform.position = data.position;
+                triggerObj.transform.eulerAngles = data.rotation;
+                
+                // 添加碰撞器
+                BoxCollider collider = triggerObj.AddComponent<BoxCollider>();
+                collider.size = data.size;
+                collider.isTrigger = true;
+                
+                // 添加SpawnTrigger组件
+                SpawnTrigger trigger = triggerObj.AddComponent<SpawnTrigger>();
+                
+                // 设置目标层
+                if (data.targetLayers != null && data.targetLayers.Count > 0)
+                {
+                    LayerMask mask = 0;
+                    foreach (var layerName in data.targetLayers)
+                    {
+                        mask |= 1 << LayerMask.NameToLayer(layerName);
+                    }
+                    typeof(SpawnTrigger).GetField("targetLayers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, mask);
+                }
+                
+                // 设置触发器属性
+                typeof(SpawnTrigger).GetField("triggerType", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, (SpawnTrigger.TriggerType)data.triggerType);
+                typeof(SpawnTrigger).GetField("oneTimeOnly", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.oneTimeOnly);
+                typeof(SpawnTrigger).GetField("cooldown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.cooldown);
+                typeof(SpawnTrigger).GetField("activateOnStart", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.activateOnStart);
+                typeof(SpawnTrigger).GetField("triggerId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.triggerId);
+                typeof(SpawnTrigger).GetField("waveIds", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.waveIds.ToArray());
+                typeof(SpawnTrigger).GetField("triggerAllWaves", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(trigger, data.triggerAllWaves);
+            }
         }
         
         /// <summary>
@@ -137,7 +342,7 @@ namespace TrianCatStudio
                 return;
                 
             // 检查当前活跃敌人数量
-            if (activeEnemies.Count >= rule.maxConcurrentEnemies)
+            if (activeEnemies.Count >= rule.maxConcurrentEnemies || activeEnemies.Count >= maxEnemyCount)
                 return;
                 
             // 获取刷怪数量
@@ -153,6 +358,11 @@ namespace TrianCatStudio
                 spawnCount = Mathf.Min(spawnCount, rule.spawnLimit);
                 rule.spawnLimit -= spawnCount;
             }
+            
+            // 限制当前刷怪数量不超过全局最大敌人数量
+            spawnCount = Mathf.Min(spawnCount, maxEnemyCount - activeEnemies.Count);
+            if (spawnCount <= 0)
+                return;
             
             // 执行刷怪
             for (int i = 0; i < spawnCount; i++)
@@ -290,6 +500,17 @@ namespace TrianCatStudio
         }
         
         /// <summary>
+        /// 获取刷怪规则
+        /// </summary>
+        public SpawnRule GetRuleById(string ruleId)
+        {
+            if (string.IsNullOrEmpty(ruleId) || !spawnRules.ContainsKey(ruleId))
+                return null;
+                
+            return spawnRules[ruleId];
+        }
+        
+        /// <summary>
         /// 添加刷怪波次
         /// </summary>
         public void AddSpawnWave(SpawnWave wave)
@@ -308,6 +529,17 @@ namespace TrianCatStudio
                     OnWaveStarted?.Invoke(startedWave.waveId);
                 };
             }
+        }
+        
+        /// <summary>
+        /// 获取刷怪波次
+        /// </summary>
+        public SpawnWave GetWaveById(string waveId)
+        {
+            if (string.IsNullOrEmpty(waveId) || !spawnWaves.ContainsKey(waveId))
+                return null;
+                
+            return spawnWaves[waveId];
         }
         
         /// <summary>
@@ -460,12 +692,26 @@ namespace TrianCatStudio
         }
         
         /// <summary>
-        /// 处理敌人被击杀（旧方法，保留为向后兼容）
+        /// 手动重新加载所有配置
         /// </summary>
-        private void HandleEnemyKilled(Enemy enemy, GameObject killer)
+        public void ReloadAllConfigurations()
         {
-            // 调用新的处理方法
-            HandleEnemyDeath(enemy);
+            // 清理现有数据
+            spawnRules.Clear();
+            spawnWaves.Clear();
+            spawnTriggers.Clear();
+            
+            // 重新加载
+            LoadAllConfigurations();
+        }
+        
+        /// <summary>
+        /// 设置最大敌人数量
+        /// </summary>
+        public void SetMaxEnemyCount(int count)
+        {
+            maxEnemyCount = Mathf.Max(1, count);
+            Debug.Log($"[SpawnController] 最大敌人数量设置为 {maxEnemyCount}");
         }
         
         #endregion

@@ -1,0 +1,183 @@
+{
+  "spawnWaves": [
+    {
+      "waveId": "wave_tutorial",
+      "waveName": "教程阶段",
+      "enabled": true,
+      "loopWave": false,
+      "loopCount": 0,
+      "initialDelay": 5.0,
+      "triggerType": 0,
+      "autoTriggerTime": 0,
+      "prerequisiteWaveId": "",
+      "isBossWave": false,
+      "isEventWave": false,
+      "difficultyModifier": 0.8,
+      "stages": [
+        {
+          "stageId": "stage_tutorial_1",
+          "stageName": "教程第一波",
+          "stageDelay": 0,
+          "stageDuration": 60,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_zombie_basic"]
+        }
+      ]
+    },
+    {
+      "waveId": "wave_normal_1",
+      "waveName": "第一阶段",
+      "enabled": true,
+      "loopWave": false,
+      "loopCount": 0,
+      "initialDelay": 0,
+      "triggerType": 2,
+      "autoTriggerTime": 0,
+      "prerequisiteWaveId": "wave_tutorial",
+      "isBossWave": false,
+      "isEventWave": false,
+      "difficultyModifier": 1.0,
+      "stages": [
+        {
+          "stageId": "stage_normal_1_1",
+          "stageName": "基础僵尸",
+          "stageDelay": 5,
+          "stageDuration": 120,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_zombie_basic"]
+        },
+        {
+          "stageId": "stage_normal_1_2",
+          "stageName": "混合僵尸",
+          "stageDelay": 10,
+          "stageDuration": 180,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_zombie_mixed"]
+        }
+      ]
+    },
+    {
+      "waveId": "wave_normal_2",
+      "waveName": "第二阶段",
+      "enabled": true,
+      "loopWave": false,
+      "loopCount": 0,
+      "initialDelay": 0,
+      "triggerType": 2,
+      "autoTriggerTime": 0,
+      "prerequisiteWaveId": "wave_normal_1",
+      "isBossWave": false,
+      "isEventWave": false,
+      "difficultyModifier": 1.2,
+      "stages": [
+        {
+          "stageId": "stage_normal_2_1",
+          "stageName": "骷髅兵团",
+          "stageDelay": 10,
+          "stageDuration": 180,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_skeleton_basic"]
+        },
+        {
+          "stageId": "stage_normal_2_2",
+          "stageName": "精英小队",
+          "stageDelay": 10,
+          "stageDuration": 120,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_elite"]
+        }
+      ]
+    },
+    {
+      "waveId": "wave_boss",
+      "waveName": "Boss阶段",
+      "enabled": true,
+      "loopWave": false,
+      "loopCount": 0,
+      "initialDelay": 0,
+      "triggerType": 2,
+      "autoTriggerTime": 0,
+      "prerequisiteWaveId": "wave_normal_2",
+      "isBossWave": true,
+      "isEventWave": true,
+      "difficultyModifier": 1.5,
+      "stages": [
+        {
+          "stageId": "stage_boss_preparation",
+          "stageName": "Boss来临前兆",
+          "stageDelay": 20,
+          "stageDuration": 60,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_elite"]
+        },
+        {
+          "stageId": "stage_boss_fight",
+          "stageName": "Boss战",
+          "stageDelay": 10,
+          "stageDuration": 0,
+          "completionCondition": 1,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_boss"]
+        }
+      ]
+    },
+    {
+      "waveId": "wave_endless",
+      "waveName": "无尽模式",
+      "enabled": true,
+      "loopWave": true,
+      "loopCount": 0,
+      "initialDelay": 0,
+      "triggerType": 2,
+      "autoTriggerTime": 0,
+      "prerequisiteWaveId": "wave_boss",
+      "isBossWave": false,
+      "isEventWave": false,
+      "difficultyModifier": 2.0,
+      "stages": [
+        {
+          "stageId": "stage_endless_1",
+          "stageName": "无尽僵尸",
+          "stageDelay": 10,
+          "stageDuration": 180,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_zombie_mixed"]
+        },
+        {
+          "stageId": "stage_endless_2",
+          "stageName": "无尽骷髅",
+          "stageDelay": 10,
+          "stageDuration": 180,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_skeleton_basic"]
+        },
+        {
+          "stageId": "stage_endless_3",
+          "stageName": "无尽精英",
+          "stageDelay": 10,
+          "stageDuration": 120,
+          "completionCondition": 0,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_elite"]
+        },
+        {
+          "stageId": "stage_endless_boss",
+          "stageName": "无尽Boss",
+          "stageDelay": 20,
+          "stageDuration": 0,
+          "completionCondition": 1,
+          "requiredKillCount": 0,
+          "ruleIds": ["rule_boss"]
+        }
+      ]
+    }
+  ]
+} 

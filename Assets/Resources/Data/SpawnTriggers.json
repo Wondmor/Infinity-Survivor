@@ -1,0 +1,139 @@
+{
+  "spawnTriggers": [
+    {
+      "triggerId": "trigger_tutorial",
+      "triggerName": "教程区域",
+      "enabled": true,
+      "triggerType": 0,
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 20,
+        "y": 5,
+        "z": 20
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "targetLayers": ["Player"],
+      "oneTimeOnly": false,
+      "cooldown": 0,
+      "activateOnStart": true,
+      "waveIds": ["wave_tutorial"],
+      "triggerAllWaves": false
+    },
+    {
+      "triggerId": "trigger_normal_1",
+      "triggerName": "第一阶段区域",
+      "enabled": true,
+      "triggerType": 0,
+      "position": {
+        "x": 30,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 30,
+        "y": 5,
+        "z": 30
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "targetLayers": ["Player"],
+      "oneTimeOnly": true,
+      "cooldown": 0,
+      "activateOnStart": false,
+      "waveIds": ["wave_normal_1"],
+      "triggerAllWaves": false
+    },
+    {
+      "triggerId": "trigger_normal_2",
+      "triggerName": "第二阶段区域",
+      "enabled": true,
+      "triggerType": 0,
+      "position": {
+        "x": 60,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 40,
+        "y": 5,
+        "z": 40
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "targetLayers": ["Player"],
+      "oneTimeOnly": true,
+      "cooldown": 0,
+      "activateOnStart": false,
+      "waveIds": ["wave_normal_2"],
+      "triggerAllWaves": false
+    },
+    {
+      "triggerId": "trigger_boss",
+      "triggerName": "Boss区域",
+      "enabled": true,
+      "triggerType": 0,
+      "position": {
+        "x": 100,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 50,
+        "y": 5,
+        "z": 50
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "targetLayers": ["Player"],
+      "oneTimeOnly": true,
+      "cooldown": 0,
+      "activateOnStart": false,
+      "waveIds": ["wave_boss"],
+      "triggerAllWaves": false
+    },
+    {
+      "triggerId": "trigger_endless",
+      "triggerName": "无尽模式区域",
+      "enabled": true,
+      "triggerType": 0,
+      "position": {
+        "x": 150,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 100,
+        "y": 5,
+        "z": 100
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "targetLayers": ["Player"],
+      "oneTimeOnly": false,
+      "cooldown": 0,
+      "activateOnStart": false,
+      "waveIds": ["wave_endless"],
+      "triggerAllWaves": false
+    }
+  ]
+} 
