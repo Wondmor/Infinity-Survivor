@@ -115,7 +115,7 @@ namespace TrianCatStudio
             DamageData finalDamage = damageInfo.CalculateFinalDamage();
 
             // 4. 应用伤害
-            ApplyDamage(damageInfo.defender, finalDamage);
+            ApplyDamage(damageInfo.defender, finalDamage, damageInfo.attacker);
 
             // 5. 检查是否击杀
             bool isKilled = CheckIfKilled(damageInfo.defender);
@@ -170,13 +170,20 @@ namespace TrianCatStudio
         /// <summary>
         /// 应用伤害到防御者
         /// </summary>
-        private void ApplyDamage(GameObject defender, DamageData damage)
+        private void ApplyDamage(GameObject defender, DamageData damage, GameObject source)
         {
             // 获取防御者的生命值组件
             IDamageable damageable = defender.GetComponent<IDamageable>();
             if (damageable != null)
             {
-                damageable.TakeDamage(damage.GetTotalDamage());
+                // 保存伤害来源
+                damage.source = source;
+                
+                // 获取主要伤害类型
+                DamageType damageType = damage.GetMainDamageType();
+                
+                // 应用伤害
+                damageable.TakeDamage(damage.GetTotalDamage(), damageType, source);
                 
                 // 显示伤害数字（可选）
                 ShowDamageNumber(defender, damage);

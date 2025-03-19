@@ -40,6 +40,12 @@ namespace TrianCatStudio
             this.defender = defender;
             this.damage = damage;
             
+            // 设置伤害来源
+            if(damage != null)
+            {
+                damage.source = attacker;
+            }
+            
             // 如果攻击者和防御者之间有方向，记录方向
             if (attacker != null && defender != null)
             {
@@ -49,6 +55,66 @@ namespace TrianCatStudio
             {
                 this.damageDirection = Vector3.forward;
             }
+        }
+
+        // 静态创建方法
+        
+        /// <summary>
+        /// 创建物理伤害信息
+        /// </summary>
+        public static DamageInfo CreatePhysical(GameObject attacker, GameObject defender, float damage)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreatePhysical(damage));
+        }
+        
+        /// <summary>
+        /// 创建火焰伤害信息
+        /// </summary>
+        public static DamageInfo CreateFire(GameObject attacker, GameObject defender, float damage)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreateFire(damage));
+        }
+        
+        /// <summary>
+        /// 创建冰冻伤害信息
+        /// </summary>
+        public static DamageInfo CreateIce(GameObject attacker, GameObject defender, float damage)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreateIce(damage));
+        }
+        
+        /// <summary>
+        /// 创建雷电伤害信息
+        /// </summary>
+        public static DamageInfo CreateLightning(GameObject attacker, GameObject defender, float damage)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreateLightning(damage));
+        }
+        
+        /// <summary>
+        /// 创建毒素伤害信息
+        /// </summary>
+        public static DamageInfo CreatePoison(GameObject attacker, GameObject defender, float damage)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreatePoison(damage));
+        }
+        
+        /// <summary>
+        /// 创建纯粹伤害信息（无视防御）
+        /// </summary>
+        public static DamageInfo CreatePure(GameObject attacker, GameObject defender, float damage)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreatePure(damage));
+        }
+        
+        /// <summary>
+        /// 创建混合伤害信息
+        /// </summary>
+        public static DamageInfo CreateMixed(GameObject attacker, GameObject defender, 
+                                          float physical = 0, float fire = 0, float ice = 0, 
+                                          float lightning = 0, float poison = 0, float pure = 0)
+        {
+            return new DamageInfo(attacker, defender, DamageData.CreateMixed(physical, fire, ice, lightning, poison, pure));
         }
 
         /// <summary>
@@ -117,13 +183,17 @@ namespace TrianCatStudio
         
         // 元素伤害
         public float fire = 0;      // 火焰伤害
-        public float water = 0;     // 水系伤害
+        public float water = 0;     // 水系伤害（冰冻）
         public float earth = 0;     // 土系伤害
         public float wind = 0;      // 风系伤害
         public float lightning = 0; // 雷电伤害
+        public float poison = 0;    // 毒素伤害
         
         // 特殊伤害
         public float pure = 0;      // 纯粹伤害（无视防御）
+        
+        // 伤害来源
+        public GameObject source;   // 伤害来源对象
         
         // 暴击倍率
         public float criticalMultiplier = 2.0f;
@@ -133,7 +203,110 @@ namespace TrianCatStudio
         /// </summary>
         public float GetTotalDamage()
         {
-            return physical + fire + water + earth + wind + lightning + pure;
+            return physical + fire + water + earth + wind + lightning + poison + pure;
+        }
+        
+        /// <summary>
+        /// 创建物理伤害
+        /// </summary>
+        public static DamageData CreatePhysical(float damage)
+        {
+            return new DamageData { physical = damage };
+        }
+        
+        /// <summary>
+        /// 创建火焰伤害
+        /// </summary>
+        public static DamageData CreateFire(float damage)
+        {
+            return new DamageData { fire = damage };
+        }
+        
+        /// <summary>
+        /// 创建冰冻伤害
+        /// </summary>
+        public static DamageData CreateIce(float damage)
+        {
+            return new DamageData { water = damage };
+        }
+        
+        /// <summary>
+        /// 创建雷电伤害
+        /// </summary>
+        public static DamageData CreateLightning(float damage)
+        {
+            return new DamageData { lightning = damage };
+        }
+        
+        /// <summary>
+        /// 创建毒素伤害
+        /// </summary>
+        public static DamageData CreatePoison(float damage)
+        {
+            return new DamageData { poison = damage };
+        }
+        
+        /// <summary>
+        /// 创建纯粹伤害（无视防御）
+        /// </summary>
+        public static DamageData CreatePure(float damage)
+        {
+            return new DamageData { pure = damage };
+        }
+        
+        /// <summary>
+        /// 创建混合伤害
+        /// </summary>
+        public static DamageData CreateMixed(float physical = 0, float fire = 0, float ice = 0, 
+                                            float lightning = 0, float poison = 0, float pure = 0)
+        {
+            return new DamageData 
+            { 
+                physical = physical,
+                fire = fire,
+                water = ice, // 水系等同于冰冻
+                lightning = lightning,
+                poison = poison,
+                pure = pure
+            };
+        }
+        
+        /// <summary>
+        /// 获取主要伤害类型
+        /// </summary>
+        public DamageType GetMainDamageType()
+        {
+            // 创建伤害类型和对应伤害值的字典
+            var damageValues = new System.Collections.Generic.Dictionary<DamageType, float>
+            {
+                { DamageType.Physical, physical },
+                { DamageType.Fire, fire },
+                { DamageType.Ice, water },      // 水系伤害对应冰冻伤害类型
+                { DamageType.Lightning, lightning },
+                { DamageType.Poison, poison }
+            };
+            
+            // 默认为物理伤害
+            DamageType mainType = DamageType.Physical;
+            float highestDamage = physical;
+            
+            // 找出伤害值最高的类型
+            foreach(var pair in damageValues)
+            {
+                if(pair.Value > highestDamage)
+                {
+                    highestDamage = pair.Value;
+                    mainType = pair.Key;
+                }
+            }
+            
+            // 如果纯粹伤害很高，考虑使用真实伤害类型
+            if(pure > highestDamage)
+            {
+                return DamageType.True;
+            }
+            
+            return mainType;
         }
 
         /// <summary>
@@ -147,6 +320,7 @@ namespace TrianCatStudio
             earth *= criticalMultiplier;
             wind *= criticalMultiplier;
             lightning *= criticalMultiplier;
+            poison *= criticalMultiplier;
             // 纯粹伤害通常不受暴击影响
         }
 
@@ -163,7 +337,9 @@ namespace TrianCatStudio
                 earth = this.earth,
                 wind = this.wind,
                 lightning = this.lightning,
+                poison = this.poison,
                 pure = this.pure,
+                source = this.source,
                 criticalMultiplier = this.criticalMultiplier
             };
         }

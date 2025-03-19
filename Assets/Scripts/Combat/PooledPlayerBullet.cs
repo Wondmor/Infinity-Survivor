@@ -16,9 +16,6 @@ namespace TrianCatStudio
         [SerializeField] private TrailRenderer trailRenderer; // 拖尾渲染器
         [SerializeField] private ParticleSystem bulletParticleSystem; // 粒子系统
         
-        // 当前已穿透数量
-        protected int currentPierceCount = 0;
-        
         protected override void Start()
         {
             base.Start();
@@ -41,7 +38,7 @@ namespace TrianCatStudio
                 float actualDamage = CalculateDamage();
                 
                 // 应用伤害
-                damageable.TakeDamage(actualDamage);
+                damageable.TakeDamage(actualDamage, DamageType.Physical, hitObject);
                 
                 // 输出调试信息
                 Debug.Log($"玩家子弹击中 {hitObject.name}，造成 {actualDamage} 点伤害");
