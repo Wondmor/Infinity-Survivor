@@ -56,6 +56,6 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Infinity-Survivor.sln",
+    "dotnet.defaultSolution": "Infinity Survivor.sln",
     "dotnet.preferCSharpExtension": true
 }
